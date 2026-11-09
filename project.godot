@@ -1,0 +1,19 @@
+; Game2 / 旧梦乡 — Godot 4.7.2, no external assets required for the graybox
+config_version=5
+
+[application]
+config/name="旧梦乡：广播里的人"
+run/main_scene="res://scenes/main.tscn"
+config/description="A first-person Chinese folklore mystery prototype."
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+
+[physics]
+3d/default_gravity=16.0
+
+[rendering]
+textures/default_filters/use_nearest_mipmap_filter=false
+environment/defaults/default_clear_color=Color(0.12, 0.17, 0.21, 1)
