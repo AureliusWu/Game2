@@ -28,7 +28,7 @@ const REQUIRED := ["poster", "ledger", "log", "tape"]
 @onready var player: CharacterBody3D = $Player
 @onready var eye: Camera3D = $Player/Camera3D
 
-var world: Node3D
+var world
 var current_zone: String = "street"
 var collected: Dictionary = {}
 var finished: bool = false
@@ -348,7 +348,7 @@ func _load_save() -> void:
     if not FileAccess.file_exists("user://case01-save.json"):
         return
     var data: Variant = JSON.parse_string(FileAccess.get_file_as_string("user://case01-save.json"))
-    if not data is Dictionary:
+    if not (data is Dictionary):
         return
     var saved: Variant = data.get("found", [])
     if saved is Array:
