@@ -1,8 +1,10 @@
 extends Node3D
+const Dressing = preload("res://scripts/dressing.gd")
 ## Procedural 3D graybox for Case 01. Replace meshes/materials with licensed PBR assets later.
 ## Coordinates are in meters; interactable nodes are represented by stable hotspot IDs.
 var hotspots: Array[Dictionary] = []
 var current_zone: String = "street"
+var haunted: bool = false
 
 func build_zone(zone: String) -> void:
     current_zone = zone
@@ -21,6 +23,7 @@ func build_zone(zone: String) -> void:
             _build_shrine()
         _:
             push_error("Unknown zone: " + zone)
+    Dressing.decorate(self, zone, haunted)
     _light(Vector3(0, 7, 0), Color(0.83, 0.87, 1.0), 0.3, 23.0)
 
 func _material(color: Color, emissive: bool = false) -> StandardMaterial3D:
@@ -155,6 +158,7 @@ func _build_shop() -> void:
     _label("旧账本 / 2003 年 7 月", Vector3(-1.8, 2.0, -2.5))
     _spot("ledger", "翻阅旧账本", Vector3(-1.8, 1.38, -1.6))
     _label("汽水  五角", Vector3(3.3, 3.9, -3.3), 30)
+    _spot("calendar", "查看墙上旧日历", Vector3(-4.4, 3.3, -4.8))
 
 func _build_radio() -> void:
     _room(Color(0.34, 0.35, 0.34), Color(0.51, 0.56, 0.52))
@@ -167,6 +171,7 @@ func _build_radio() -> void:
     _label("磁带录音", Vector3(2.0, 2.55, -2.4))
     _spot("log", "阅读值班日志", Vector3(-2.0, 1.45, -1.9))
     _spot("tape", "播放旧录音", Vector3(2.0, 1.45, -1.9))
+    _spot("broadcast_notice", "查看停播通知", Vector3(-4.1, 2.7, -4.7))
 
 func _build_shrine() -> void:
     _room(Color(0.28, 0.25, 0.22), Color(0.34, 0.32, 0.28))
@@ -177,4 +182,5 @@ func _build_shrine() -> void:
     _box(Vector3(-3.3, 0.85, -2.4), Vector3(1.5, 1.7, 0.5), Color(0.34, 0.25, 0.19))
     _label("封声残页", Vector3(-2.3, 2.8, -2.2))
     _spot("ritual", "阅读封声残页", Vector3(-2.3, 1.4, -2.1))
+    _spot("tablet", "查看无名牌位", Vector3(0.0, 2.3, -3.55))
     _light(Vector3(0, 3.4, -3), Color(0.99, 0.62, 0.32), 1.6, 10.0)
