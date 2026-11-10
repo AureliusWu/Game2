@@ -1,6 +1,7 @@
 extends Node3D
 const Dressing = preload("res://scripts/dressing.gd")
 const StoryDressing = preload("res://scripts/story_dressing.gd")
+const Characters = preload("res://scripts/characters.gd")
 const Materials = preload("res://scripts/materials.gd")
 ## Procedural 3D graybox for Case 01. Replace meshes/materials with licensed PBR assets later.
 ## Coordinates are in meters; interactable nodes are represented by stable hotspot IDs.
@@ -186,7 +187,7 @@ func _build_shop() -> void:
     _spot("ledger", "翻阅旧账本", Vector3(-1.8, 1.38, -1.6))
     _label("汽水  五角", Vector3(3.3, 3.9, -3.3), 30)
     _spot("calendar", "查看墙上旧日历", Vector3(-4.4, 3.3, -4.8))
-    _placeholder_person(Vector3(-3.6, 0, 0.1), Color(0.33, 0.39, 0.33))
+    Characters.build(self, "npc_shop", Vector3(-3.6, 0, 0.1))
     _spot("npc_shop", "询问吴婶", Vector3(-3.6, 1.42, 0.1))
 
 func _build_radio() -> void:
@@ -201,7 +202,7 @@ func _build_radio() -> void:
     _spot("log", "阅读值班日志", Vector3(-2.0, 1.45, -1.9))
     _spot("tape", "播放旧录音", Vector3(2.0, 1.45, -1.9))
     _spot("broadcast_notice", "查看停播通知", Vector3(-4.1, 2.7, -4.7))
-    _placeholder_person(Vector3(3.35, 0, 0.5), Color(0.30, 0.36, 0.47))
+    Characters.build(self, "npc_radio", Vector3(3.35, 0, 0.5))
     _spot("npc_radio", "询问陈站长", Vector3(3.35, 1.42, 0.5))
 
 func _build_shrine() -> void:
@@ -216,19 +217,3 @@ func _build_shrine() -> void:
     _spot("tablet", "查看无名牌位", Vector3(0.0, 2.3, -3.55))
     _light(Vector3(0, 3.4, -3), Color(0.99, 0.62, 0.32), 1.6, 10.0)
 
-func _placeholder_person(pos: Vector3, coat: Color) -> void:
-    # Explicit temporary witness mannequin, with human height and period clothing proportions.
-    # No silhouette implies a final character asset or facial animation.
-    _cylinder(pos + Vector3(0, 0.82, 0), 0.28, 1.03, coat, "wood")
-    _cylinder(pos + Vector3(-0.37, 0.91, 0), 0.10, 0.83, coat)
-    _cylinder(pos + Vector3(0.37, 0.91, 0), 0.10, 0.83, coat)
-    _cylinder(pos + Vector3(-0.13, 0.22, 0), 0.10, 0.46, Color(0.24, 0.25, 0.23))
-    _cylinder(pos + Vector3(0.13, 0.22, 0), 0.10, 0.46, Color(0.24, 0.25, 0.23))
-    var head := MeshInstance3D.new()
-    var sphere := SphereMesh.new()
-    sphere.radius = 0.23
-    sphere.height = 0.46
-    head.mesh = sphere
-    head.position = pos + Vector3(0, 1.60, 0)
-    head.material_override = _material(Color(0.67, 0.54, 0.40), false, "plaster")
-    add_child(head)
