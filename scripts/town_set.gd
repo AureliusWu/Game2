@@ -404,7 +404,7 @@ static func _text(root: Node3D, content: String, pos: Vector3,
     label.text = content
     label.position = pos
     label.font_size = font_size
-    label.pixel_size = 0.004
+    label.pixel_size = 0.006
     label.modulate = tint
     label.outline_size = 2
     label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
