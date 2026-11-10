@@ -53,6 +53,11 @@ func _check(game: Node) -> void:
     if shop_head == null or shop_motion == null:
         _fail("Missing animation pivots on shopkeeper")
         return
+    game.call("_interview", "npc_shop")
+    if not bool(game.get("witness_panel_mode")):
+        _fail("Witness dialogue did not select visible side-panel mode")
+        return
+    game.call("_close_modal")
     world.call("react_witness", "npc_shop", 2.0)
     shop_motion.call("advance", 0.1)
     if absf(shop_head.rotation.x) < 0.02:
