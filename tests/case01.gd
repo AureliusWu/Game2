@@ -1,6 +1,7 @@
 extends SceneTree
 const Interaction = preload("res://scripts/interaction.gd")
 const Screenshots = preload("res://scripts/screenshots.gd")
+const TapeSequence = preload("res://scripts/tape_sequence.gd")
 ## Deterministic headless checks for the shipped case logic. Not a replacement for desktop play QA.
 
 func _initialize() -> void:
@@ -120,10 +121,45 @@ func _check(game: Node) -> void:
     if not away.is_empty():
         _fail("Interaction still focused on unseen marker")
         return
+    # Tape clue requires playback completion; cancelling must be safe.
     game.call("_go_to", "radio")
     game.call("_investigate", "tape")
-    if not world.get("haunted"):
-        _fail("First listening to tape must trigger visual anomaly")
+    if (game.get("collected") as Dictionary).has("tape") or bool(world.get("haunted")):
+        _fail("Inspecting cassette prematurely granted evidence")
+        return
+    if TapeSequence.count() != 4 or not TapeSequence.beat(-1).is_empty():
+        _fail("Tape script beat count malformed")
+        return
+    game.call("_tape_start")
+    if not bool(game.get("tape_active")) or int(game.get("tape_step")) != 0:
+        _fail("Tape playback did not start")
+        return
+    var tape_sound: AudioStreamWAV = ambience.event_player.stream as AudioStreamWAV
+    if tape_sound == null or tape_sound.data.is_empty():
+        _fail("No generated tape audio")
+        return
+    game.call("_tape_next")
+    game.call("_close_modal")
+    if (game.get("collected") as Dictionary).has("tape") or bool(world.get("haunted")):
+        _fail("Cancelled tape must not award evidence")
+        return
+    game.call("_investigate", "tape")
+    game.call("_tape_start")
+    for step in range(TapeSequence.count()):
+        if int(game.get("tape_step")) != step:
+            _fail("Unexpected tape beat order")
+            return
+        game.call("_tape_next")
+    if bool(game.get("tape_active")) or not (game.get("collected") as Dictionary).has("tape"):
+        _fail("Complete tape playback did not archive evidence")
+        return
+    if not bool(world.get("haunted")):
+        _fail("Finished tape did not trigger environmental anomaly")
+        return
+    game.call("_investigate", "tape")
+    game.call("_tape_complete")
+    if not (game.get("collected") as Dictionary).has("tape"):
+        _fail("Replaying tape lost recorded evidence")
         return
     game.call("_go_to", "street")
     if not (game.get("collected") as Dictionary).has("town_echo"):
@@ -176,5 +212,5 @@ func _check(game: Node) -> void:
     if not FileAccess.file_exists("user://case01-save.json"):
         _fail("Completion did not save")
         return
-    print("CASE01_OK: screenshot names, witness-visible dialogue,  areas, gaze, post-tape events, interview notes, deduction, save")
+    print("CASE01_OK: gated tape playback/cancel/replay/audio, witness, clues, deduction, save")
     quit(0)
