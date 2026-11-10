@@ -18,10 +18,11 @@ func _fail(reason: String) -> void:
 
 func _check(game: Node) -> void:
     var expected: Dictionary = {
-        "street": ["poster", "public_phone", "enter_shop", "enter_radio", "enter_shrine"],
+        "street": ["poster", "public_phone", "enter_shop", "enter_radio", "enter_shrine", "enter_school"],
         "shop": ["ledger", "calendar", "npc_shop", "exit"],
         "radio": ["log", "tape", "broadcast_notice", "npc_radio", "exit"],
-        "shrine": ["ritual", "tablet", "exit"]
+        "shrine": ["ritual", "tablet", "exit"],
+        "school": ["school_register", "school_notebook", "exit"]
     }
     var world: Node = game.get("world")
     for zone in expected.keys():
@@ -107,13 +108,38 @@ func _check(game: Node) -> void:
     if game.call("_ready_to_deduce"):
         _fail("Witness statements alone cannot unlock timeline deduction")
         return
+    # School records and testimony make a second, optional but playable inference.
+    if game.call("_can_corroborate"):
+        _fail("Missing school record should keep corroboration locked")
+        return
+    game.call("_go_to", "school")
+    game.call("_investigate", "school_register")
+    game.call("_investigate", "school_notebook")
+    if game.call("_can_corroborate"):
+        _fail("No shop ledger: cannot infer identity from the school record alone")
+        return
+    game.call("_investigate", "ledger")
+    if not game.call("_can_corroborate"):
+        _fail("Ledger + shop testimony + school register should unlock corroboration")
+        return
+    game.call("_corroboration_answer", "A")
+    if (game.get("collected") as Dictionary).has("identity_check"):
+        _fail("Wrong optional inference should not unlock the finding")
+        return
+    game.call("_corroboration_answer", "B")
+    if not (game.get("collected") as Dictionary).has("identity_check"):
+        _fail("Correct optional inference did not create the reasoning record")
+        return
+    if game.call("_ready_to_deduce"):
+        _fail("Optional corroboration must not bypass the four central records")
+        return
     game.call("_save")
     var save_data: Variant = JSON.parse_string(FileAccess.get_file_as_string("user://case01-save.json"))
     if not (save_data is Dictionary):
         _fail("Save data malformed")
         return
     var saved_clues: Array = save_data.get("found", [])
-    if not saved_clues.has("shop_testimony") or not saved_clues.has("radio_testimony"):
+    if not saved_clues.has("shop_testimony") or not saved_clues.has("radio_testimony") or not saved_clues.has("identity_check"):
         _fail("Witness statements missing from persistent save")
         return
     game.set("collected", {})
@@ -139,5 +165,5 @@ func _check(game: Node) -> void:
     if not FileAccess.file_exists("user://case01-save.json"):
         _fail("Completion did not save")
         return
-    print("CASE01_OK: areas, gaze, post-tape events, interview notes, deduction, save")
+    print("CASE01_OK: areas, school, optional testimony crosscheck, gaze, case logic, persistence")
     quit(0)
