@@ -1,4 +1,5 @@
 extends RefCounted
+const WitnessMotion = preload("res://scripts/witness_motion.gd")
 ## Original low-poly witness characters. Procedural meshes, no third-party art.
 ## The deliberately simplified figures are placeholders for authored character assets.
 
@@ -16,15 +17,23 @@ static func build(scene: Node3D, person: String, origin: Vector3) -> Node3D:
     _capsule(root, Vector3(0, 1.14, 0), Vector3(0.52, 0.82, 0.34), coat)
     _box(root, Vector3(0, 0.83, 0.02), Vector3(0.52, 0.18, 0.35), trim)
     for side in [-1.0, 1.0]:
-        _capsule(root, Vector3(side * 0.37, 1.11, 0.0), Vector3(0.20, 0.76, 0.22), coat)
+        var arm := Node3D.new()
+        arm.name = "RightArm" if side > 0.0 else "LeftArm"
+        arm.position = Vector3(side * 0.37, 1.48, 0.0)
+        root.add_child(arm)
+        _capsule(arm, Vector3(0, -0.37, 0), Vector3(0.20, 0.76, 0.22), coat)
+        _sphere(arm, Vector3(0, -0.78, 0.04), Vector3(0.11, 0.14, 0.10), skin)
         _capsule(root, Vector3(side * 0.14, 0.37, 0.0), Vector3(0.20, 0.67, 0.23), pants)
         _box(root, Vector3(side * 0.14, 0.08, 0.13), Vector3(0.26, 0.16, 0.42), Color(0.13, 0.13, 0.12))
-        _sphere(root, Vector3(side * 0.38, 0.70, 0.04), Vector3(0.11, 0.14, 0.10), skin)
-    _capsule(root, Vector3(0, 1.78, 0), Vector3(0.38, 0.45, 0.35), skin)
-    _sphere(root, Vector3(0, 1.97, -0.06), Vector3(0.42, 0.18, 0.38), Color(0.16, 0.16, 0.14))
+    var head := Node3D.new()
+    head.name = "HeadPivot"
+    head.position = Vector3(0, 1.78, 0)
+    root.add_child(head)
+    _capsule(head, Vector3.ZERO, Vector3(0.38, 0.45, 0.35), skin)
+    _sphere(head, Vector3(0, 0.19, -0.06), Vector3(0.42, 0.18, 0.38), Color(0.16, 0.16, 0.14))
     if shopkeeper:
         # 2003 small-town shopkeeper: tied-back hair, apron and cardigan.
-        _sphere(root, Vector3(0, 1.86, -0.24), Vector3(0.22, 0.22, 0.20), Color(0.15, 0.14, 0.13))
+        _sphere(head, Vector3(0, 0.08, -0.24), Vector3(0.22, 0.22, 0.20), Color(0.15, 0.14, 0.13))
         _box(root, Vector3(0, 1.10, 0.19), Vector3(0.42, 0.62, 0.05), Color(0.65, 0.59, 0.47))
         _box(root, Vector3(0, 1.34, 0.23), Vector3(0.19, 0.12, 0.035), Color(0.40, 0.37, 0.32))
         _box(root, Vector3(0, 0.95, 0.23), Vector3(0.30, 0.16, 0.04), Color(0.55, 0.49, 0.39))
@@ -34,8 +43,8 @@ static func build(scene: Node3D, person: String, origin: Vector3) -> Node3D:
         _box(root, Vector3(0, 1.28, 0.19), Vector3(0.09, 0.31, 0.05), Color(0.40, 0.27, 0.24))
         _box(root, Vector3(-0.16, 1.25, 0.19), Vector3(0.13, 0.08, 0.03), trim)
         for side in [-1.0, 1.0]:
-            _box(root, Vector3(side * 0.12, 1.80, 0.185), Vector3(0.18, 0.10, 0.04), Color(0.16, 0.16, 0.15))
-        _box(root, Vector3(0, 1.80, 0.20), Vector3(0.12, 0.03, 0.03), Color(0.16, 0.16, 0.15))
+            _box(head, Vector3(side * 0.12, 0.02, 0.185), Vector3(0.18, 0.10, 0.04), Color(0.16, 0.16, 0.15))
+        _box(head, Vector3(0, 0.02, 0.20), Vector3(0.12, 0.03, 0.03), Color(0.16, 0.16, 0.15))
     # A grounded name tag avoids treating the figures as featureless cylinder props.
     var tag := Label3D.new()
     tag.text = "吴婶" if shopkeeper else "陈站长"
@@ -45,6 +54,9 @@ static func build(scene: Node3D, person: String, origin: Vector3) -> Node3D:
     tag.position = Vector3(0, 2.37, 0)
     tag.modulate = Color(0.93, 0.84, 0.63)
     root.add_child(tag)
+    var motion := WitnessMotion.new()
+    motion.name = "Motion"
+    root.add_child(motion)
     return root
 
 static func _material(color: Color) -> StandardMaterial3D:
