@@ -98,6 +98,9 @@ func _check(game: Node) -> void:
     if after_anomaly <= before_anomaly:
         _fail("Anomaly dressing did not add visual cues")
         return
+    if world.get_node_or_null("TownAnomaly") == null:
+        _fail("Haunted street lacks distinct broadcast apparition")
+        return
     world.set("haunted", false)
     game.call("_go_to", "street")
     var ambience = game.get("ambience")
@@ -118,6 +121,23 @@ func _check(game: Node) -> void:
     game.call("_inspect_phone")
     if (game.get("collected") as Dictionary).has("phone_whisper"):
         _fail("Phone revealed late clue before tape")
+        return
+    # Standalone exterior art: no legacy greybox underneath it.
+    var town_set: Node = world.get_node_or_null("TownSet")
+    if town_set == null or town_set.get_child_count() < 350:
+        _fail("Main street authored set is missing or unusually empty")
+        return
+    if world.get_node_or_null("TownAnomaly") != null:
+        _fail("Town anomaly appeared before hearing the tape")
+        return
+    var town_material: StandardMaterial3D = RadioFinishes.get_finish("concrete",
+        Color(0.46, 0.45, 0.39))
+    if town_material.roughness_texture == null or town_material.normal_texture == null:
+        _fail("Exterior finish lost roughness/normal channels")
+        return
+    var street_sun: DirectionalLight3D = game.get_node("Sunlight") as DirectionalLight3D
+    if street_sun.light_energy > 0.55:
+        _fail("Outdoor exposure not switched to overcast art pass")
         return
     # Centered aiming selects the intended object; looking away rejects it.
     var camera: Camera3D = game.get_node("Player/Camera3D") as Camera3D
