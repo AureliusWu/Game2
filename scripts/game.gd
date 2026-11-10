@@ -65,6 +65,7 @@ var current_zone: String = "street"
 var collected: Dictionary = {}
 var finished: bool = false
 var focus_id: String = ""
+var active_witness: String = ""
 
 var layer: CanvasLayer
 var hud: Control
@@ -247,11 +248,13 @@ func _message(title: String, content: String) -> void:
     _add_button(stack, "继续", Callable(self, "_close_modal"))
 
 func _close_modal() -> void:
+    _set_witness_speaking("")
     modal.visible = false
     player.can_move = true
     Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _go_to(zone: String, initial: bool = false) -> void:
+    active_witness = ""
     var previous: String = current_zone
     current_zone = zone
     world.haunted = collected.has("tape")
@@ -370,9 +373,21 @@ func _inspect_phone() -> void:
         ambience.play_radio_anomaly()
     _message("异常记录 · 没有接线的电话", str(EVIDENCE["phone_whisper"]["text"]))
 
+func _set_witness_speaking(person: String) -> void:
+    if world != null and active_witness != "":
+        var old: Node = world.get_node_or_null("Witness_" + active_witness)
+        if old != null:
+            old.set("speaking", false)
+    active_witness = person
+    if world != null and person != "":
+        var actor: Node = world.get_node_or_null("Witness_" + person)
+        if actor != null:
+            actor.set("speaking", true)
+
 func _interview(person: String) -> void:
     if not Interviews.PEOPLE.has(person):
         return
+    _set_witness_speaking(person)
     var witness: Dictionary = Interviews.PEOPLE[person]
     var stack := _begin_modal("问话 · " + str(witness["name"]))
     _add_text(stack, str(witness["intro"]), 155.0)
@@ -384,6 +399,7 @@ func _interview(person: String) -> void:
 func _interview_topic(person: String, topic_id: String) -> void:
     if not Interviews.PEOPLE.has(person):
         return
+    _set_witness_speaking(person)
     var witness: Dictionary = Interviews.PEOPLE[person]
     for topic in witness["topics"]:
         if str(topic["id"]) != topic_id:
