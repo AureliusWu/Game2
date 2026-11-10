@@ -33,6 +33,17 @@ func _check(game: Node) -> void:
             if not found.has(wanted):
                 _fail("Missing hotspot " + wanted + " in " + zone)
                 return
+    # Characters are distinct named scene nodes, not generic cylinders.
+    game.call("_go_to", "shop")
+    var shop_character: Node = world.get_node_or_null("Witness_npc_shop")
+    if shop_character == null or shop_character.get_child_count() < 12:
+        _fail("Shopkeeper character mesh missing or incomplete")
+        return
+    game.call("_go_to", "radio")
+    var radio_character: Node = world.get_node_or_null("Witness_npc_radio")
+    if radio_character == null or radio_character.get_child_count() < 12:
+        _fail("Station chief character mesh missing or incomplete")
+        return
     # Verify environment art nodes exist before and after the tape anomaly.
     game.call("_go_to", "shop")
     if world.get_child_count() < 35:
