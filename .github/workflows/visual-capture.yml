@@ -62,8 +62,8 @@ jobs:
             --rendering-method gl_compatibility --audio-driver Dummy --resolution 1280x720 \
             --script res://tests/capture_visuals.gd 2>&1 | tee /tmp/visual.log
           if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:|VISUAL_CAPTURE_FAILED:' /tmp/visual.log; then exit 1; fi
-          grep -q 'VISUAL_CAPTURE_OK: 7' /tmp/visual.log
-          test "$(find build/visual-captures -maxdepth 1 -name '*.png' | wc -l)" -eq 7
+          grep -q 'VISUAL_CAPTURE_OK: 9' /tmp/visual.log
+          test "$(find build/visual-captures -maxdepth 1 -name '*.png' | wc -l)" -eq 9
           for png in build/visual-captures/*.png; do test -s "$png"; done
       - name: Upload actual game images
         uses: actions/upload-artifact@v4
