@@ -77,6 +77,7 @@ var crosshair: Label
 var photo_notice: Label
 var photo_busy: bool = false
 var photo_notice_end: int = 0
+var witness_panel_mode: bool = false
 var modal: PanelContainer
 
 func _ready() -> void:
@@ -203,12 +204,21 @@ func _layout_modal() -> void:
     var view: Vector2 = get_viewport().get_visible_rect().size
     var half_width: float = minf(350.0, maxf(160.0, (view.x - 36.0) * 0.5))
     var half_height: float = minf(240.0, maxf(130.0, (view.y - 36.0) * 0.5))
+    modal.anchor_left = 0.5
+    modal.anchor_right = 0.5
     modal.offset_left = -half_width
     modal.offset_right = half_width
+    if witness_panel_mode and view.x >= 1100.0:
+        modal.anchor_left = 1.0
+        modal.anchor_right = 1.0
+        modal.offset_left = -minf(620.0, view.x * 0.44)
+        modal.offset_right = -22.0
     modal.offset_top = -half_height
     modal.offset_bottom = half_height
 
-func _begin_modal(heading: String) -> VBoxContainer:
+func _begin_modal(heading: String, witness_panel: bool = false) -> VBoxContainer:
+    witness_panel_mode = witness_panel
+    _layout_modal()
     for old in modal.get_children():
         old.queue_free()
     var margin := MarginContainer.new()
@@ -411,7 +421,7 @@ func _interview(person: String) -> void:
         return
     world.react_witness(person, 1.3)
     var witness: Dictionary = Interviews.PEOPLE[person]
-    var stack := _begin_modal("问话 · " + str(witness["name"]))
+    var stack := _begin_modal("问话 · " + str(witness["name"]), true)
     _add_text(stack, str(witness["intro"]), 155.0)
     for topic in witness["topics"]:
         var id: String = str(topic["id"])
@@ -431,7 +441,7 @@ func _interview_topic(person: String, topic_id: String) -> void:
             collected[clue] = true
             _save()
         var suffix: String = "\n\n（新证词已收入调查笔记）" if clue != "" else ""
-        var stack := _begin_modal(str(witness["name"]))
+        var stack := _begin_modal(str(witness["name"]), true)
         _add_text(stack, str(topic["text"]) + suffix, 240.0)
         _add_button(stack, "继续问话", Callable(self, "_interview").bind(person))
         _add_button(stack, "结束问话", Callable(self, "_close_modal"))
