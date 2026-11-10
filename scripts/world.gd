@@ -1,5 +1,6 @@
 extends Node3D
 const Dressing = preload("res://scripts/dressing.gd")
+const Materials = preload("res://scripts/materials.gd")
 ## Procedural 3D graybox for Case 01. Replace meshes/materials with licensed PBR assets later.
 ## Coordinates are in meters; interactable nodes are represented by stable hotspot IDs.
 var hotspots: Array[Dictionary] = []
@@ -26,7 +27,9 @@ func build_zone(zone: String) -> void:
     Dressing.decorate(self, zone, haunted)
     _light(Vector3(0, 7, 0), Color(0.83, 0.87, 1.0), 0.3, 23.0)
 
-func _material(color: Color, emissive: bool = false) -> StandardMaterial3D:
+func _material(color: Color, emissive: bool = false, surface: String = "") -> StandardMaterial3D:
+    if surface != "" and not emissive:
+        return Materials.get_surface(surface, color)
     var mat := StandardMaterial3D.new()
     mat.albedo_color = color
     mat.roughness = 0.88
@@ -36,12 +39,12 @@ func _material(color: Color, emissive: bool = false) -> StandardMaterial3D:
         mat.emission_energy_multiplier = 1.4
     return mat
 
-func _box(pos: Vector3, size: Vector3, color: Color, solid: bool = false, glow: bool = false) -> void:
+func _box(pos: Vector3, size: Vector3, color: Color, solid: bool = false, glow: bool = false, surface: String = "") -> void:
     var obj := MeshInstance3D.new()
     var mesh := BoxMesh.new()
     mesh.size = size
     obj.mesh = mesh
-    obj.material_override = _material(color, glow)
+    obj.material_override = _material(color, glow, surface)
     obj.position = pos
     add_child(obj)
     if solid:
@@ -56,14 +59,14 @@ func _box(pos: Vector3, size: Vector3, color: Color, solid: bool = false, glow: 
         body.add_child(collision)
         add_child(body)
 
-func _cylinder(pos: Vector3, radius: float, height: float, color: Color) -> void:
+func _cylinder(pos: Vector3, radius: float, height: float, color: Color, surface: String = "") -> void:
     var obj := MeshInstance3D.new()
     var shape := CylinderMesh.new()
     shape.top_radius = radius
     shape.bottom_radius = radius
     shape.height = height
     obj.mesh = shape
-    obj.material_override = _material(color)
+    obj.material_override = _material(color, false, surface)
     obj.position = pos
     add_child(obj)
 
@@ -92,8 +95,8 @@ func _spot(id: String, name: String, pos: Vector3) -> void:
     _box(pos + Vector3(0, -0.42, 0), Vector3(0.15, 0.15, 0.15), Color(0.93, 0.70, 0.31), false, true)
 
 func _building(pos: Vector3, size: Vector3, wall: Color, roof: Color) -> void:
-    _box(pos, size, wall, true)
-    _box(pos + Vector3(0, size.y * 0.5 + 0.15, 0), Vector3(size.x + 0.7, 0.30, size.z + 0.7), roof)
+    _box(pos, size, wall, true, false, "plaster")
+    _box(pos + Vector3(0, size.y * 0.5 + 0.15, 0), Vector3(size.x + 0.7, 0.30, size.z + 0.7), roof, false, false, "tile")
     for i in range(2):
         var offset: float = -size.z * 0.24 + float(i) * size.z * 0.48
         _box(pos + Vector3(0, 0.8, offset), Vector3(0.035, 1.15, 1.25), Color(0.22, 0.33, 0.34))
@@ -108,8 +111,8 @@ func _lamp_post(pos: Vector3) -> void:
 func _build_street() -> void:
     var plaster := Color(0.57, 0.57, 0.49)
     var roof := Color(0.23, 0.28, 0.28)
-    _box(Vector3(0, -0.24, -8), Vector3(120, 0.45, 115), Color(0.38, 0.42, 0.37), true)
-    _box(Vector3(0, -0.005, -3), Vector3(8.3, 0.04, 75), Color(0.28, 0.29, 0.27))
+    _box(Vector3(0, -0.24, -8), Vector3(120, 0.45, 115), Color(0.38, 0.42, 0.37), true, false, "concrete")
+    _box(Vector3(0, -0.005, -3), Vector3(8.3, 0.04, 75), Color(0.28, 0.29, 0.27), false, false, "asphalt")
     _box(Vector3(-4.45, 0.05, -2), Vector3(0.65, 0.13, 77), Color(0.58, 0.53, 0.43))
     _box(Vector3(4.45, 0.05, -2), Vector3(0.65, 0.13, 77), Color(0.58, 0.53, 0.43))
     for i in range(9):
@@ -137,12 +140,12 @@ func _build_street() -> void:
     _spot("enter_shrine", "进入祠堂", Vector3(0, 1.2, -26.6))
 
 func _room(floor: Color, wall: Color) -> void:
-    _box(Vector3(0, -0.23, 0), Vector3(12, 0.45, 12), floor, true)
-    _box(Vector3(0, 3.2, -6), Vector3(12, 6.4, 0.35), wall, true)
-    _box(Vector3(-6, 3.2, 0), Vector3(0.35, 6.4, 12), wall, true)
-    _box(Vector3(6, 3.2, 0), Vector3(0.35, 6.4, 12), wall, true)
-    _box(Vector3(0, 3.2, 6), Vector3(12, 6.4, 0.35), wall, true)
-    _box(Vector3(0, 6.45, 0), Vector3(12, 0.25, 12), Color(0.30, 0.31, 0.28))
+    _box(Vector3(0, -0.23, 0), Vector3(12, 0.45, 12), floor, true, false, "tile")
+    _box(Vector3(0, 3.2, -6), Vector3(12, 6.4, 0.35), wall, true, false, "plaster")
+    _box(Vector3(-6, 3.2, 0), Vector3(0.35, 6.4, 12), wall, true, false, "plaster")
+    _box(Vector3(6, 3.2, 0), Vector3(0.35, 6.4, 12), wall, true, false, "plaster")
+    _box(Vector3(0, 3.2, 6), Vector3(12, 6.4, 0.35), wall, true, false, "plaster")
+    _box(Vector3(0, 6.45, 0), Vector3(12, 0.25, 12), Color(0.30, 0.31, 0.28), false, false, "concrete")
     _box(Vector3(0, 3.3, -5.75), Vector3(2.2, 1.4, 0.08), Color(0.23, 0.33, 0.36))
     _box(Vector3(0, 3.3, -5.68), Vector3(0.07, 1.5, 0.08), Color(0.50, 0.45, 0.33))
     _spot("exit", "返回街道", Vector3(0, 1.25, 4.4))
@@ -159,6 +162,8 @@ func _build_shop() -> void:
     _spot("ledger", "翻阅旧账本", Vector3(-1.8, 1.38, -1.6))
     _label("汽水  五角", Vector3(3.3, 3.9, -3.3), 30)
     _spot("calendar", "查看墙上旧日历", Vector3(-4.4, 3.3, -4.8))
+    _placeholder_person(Vector3(-3.6, 0, 0.1), Color(0.33, 0.39, 0.33))
+    _spot("npc_shop", "询问吴婶", Vector3(-3.6, 1.42, 0.1))
 
 func _build_radio() -> void:
     _room(Color(0.34, 0.35, 0.34), Color(0.51, 0.56, 0.52))
@@ -172,6 +177,8 @@ func _build_radio() -> void:
     _spot("log", "阅读值班日志", Vector3(-2.0, 1.45, -1.9))
     _spot("tape", "播放旧录音", Vector3(2.0, 1.45, -1.9))
     _spot("broadcast_notice", "查看停播通知", Vector3(-4.1, 2.7, -4.7))
+    _placeholder_person(Vector3(3.35, 0, 0.5), Color(0.30, 0.36, 0.47))
+    _spot("npc_radio", "询问陈站长", Vector3(3.35, 1.42, 0.5))
 
 func _build_shrine() -> void:
     _room(Color(0.28, 0.25, 0.22), Color(0.34, 0.32, 0.28))
@@ -184,3 +191,20 @@ func _build_shrine() -> void:
     _spot("ritual", "阅读封声残页", Vector3(-2.3, 1.4, -2.1))
     _spot("tablet", "查看无名牌位", Vector3(0.0, 2.3, -3.55))
     _light(Vector3(0, 3.4, -3), Color(0.99, 0.62, 0.32), 1.6, 10.0)
+
+func _placeholder_person(pos: Vector3, coat: Color) -> void:
+    # Explicit temporary witness mannequin, with human height and period clothing proportions.
+    # No silhouette implies a final character asset or facial animation.
+    _cylinder(pos + Vector3(0, 0.82, 0), 0.28, 1.03, coat, "wood")
+    _cylinder(pos + Vector3(-0.37, 0.91, 0), 0.10, 0.83, coat)
+    _cylinder(pos + Vector3(0.37, 0.91, 0), 0.10, 0.83, coat)
+    _cylinder(pos + Vector3(-0.13, 0.22, 0), 0.10, 0.46, Color(0.24, 0.25, 0.23))
+    _cylinder(pos + Vector3(0.13, 0.22, 0), 0.10, 0.46, Color(0.24, 0.25, 0.23))
+    var head := MeshInstance3D.new()
+    var sphere := SphereMesh.new()
+    sphere.radius = 0.23
+    sphere.height = 0.46
+    head.mesh = sphere
+    head.position = pos + Vector3(0, 1.60, 0)
+    head.material_override = _material(Color(0.67, 0.54, 0.40), false, "plaster")
+    add_child(head)

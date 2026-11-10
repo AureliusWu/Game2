@@ -18,8 +18,8 @@ func _fail(reason: String) -> void:
 func _check(game: Node) -> void:
     var expected: Dictionary = {
         "street": ["poster", "enter_shop", "enter_radio", "enter_shrine"],
-        "shop": ["ledger", "calendar", "exit"],
-        "radio": ["log", "tape", "broadcast_notice", "exit"],
+        "shop": ["ledger", "calendar", "npc_shop", "exit"],
+        "radio": ["log", "tape", "broadcast_notice", "npc_radio", "exit"],
         "shrine": ["ritual", "tablet", "exit"]
     }
     var world: Node = game.get("world")
@@ -48,6 +48,26 @@ func _check(game: Node) -> void:
     if not world.get("haunted"):
         _fail("First listening to tape must trigger visual anomaly")
         return
+    # Optional witness statements are persisted and do not bypass the four required clues.
+    game.set("collected", {})
+    game.call("_interview_topic", "npc_shop", "ledger")
+    game.call("_interview_topic", "npc_radio", "tape")
+    var witness_clues: Dictionary = game.get("collected")
+    if not witness_clues.has("shop_testimony") or not witness_clues.has("radio_testimony"):
+        _fail("Witness questioning did not record both testimonies")
+        return
+    if game.call("_ready_to_deduce"):
+        _fail("Witness statements alone cannot unlock timeline deduction")
+        return
+    game.call("_save")
+    var save_data: Variant = JSON.parse_string(FileAccess.get_file_as_string("user://case01-save.json"))
+    if not (save_data is Dictionary):
+        _fail("Save data malformed")
+        return
+    var saved_clues: Array = save_data.get("found", [])
+    if not saved_clues.has("shop_testimony") or not saved_clues.has("radio_testimony"):
+        _fail("Witness statements missing from persistent save")
+        return
     game.set("collected", {})
     game.set("finished", false)
     if game.call("_ready_to_deduce"):
@@ -71,5 +91,5 @@ func _check(game: Node) -> void:
     if not FileAccess.file_exists("user://case01-save.json"):
         _fail("Completion did not save")
         return
-    print("CASE01_OK: zones, period props, ambient WAV, tape anomaly, deductions, save")
+    print("CASE01_OK: zones, material architecture, witness dialogues, testimony save, anomaly, deduction")
     quit(0)
