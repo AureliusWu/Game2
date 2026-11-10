@@ -30,6 +30,15 @@ func build_zone(zone: String) -> void:
     StoryDressing.decorate(self, zone, haunted)
     _light(Vector3(0, 7, 0), Color(0.83, 0.87, 1.0), 0.3, 23.0)
 
+
+func react_witness(person: String, seconds: float = 2.0) -> void:
+    var root := get_node_or_null("Witness_" + person)
+    if root == null:
+        return
+    var motion := root.get_node_or_null("Motion")
+    if motion != null:
+        motion.call("speak", seconds)
+
 func _material(color: Color, emissive: bool = false, surface: String = "") -> StandardMaterial3D:
     if surface != "" and not emissive:
         return Materials.get_surface(surface, color)
