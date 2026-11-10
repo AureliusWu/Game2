@@ -3,6 +3,7 @@ extends Node3D
 const WorldBuilder = preload("res://scripts/world.gd")
 const Ambience = preload("res://scripts/ambience.gd")
 const Interviews = preload("res://scripts/interviews.gd")
+const Interaction = preload("res://scripts/interaction.gd")
 const EVIDENCE := {
     "poster": {
         "name": "寻人启事",
@@ -43,6 +44,10 @@ const EVIDENCE := {
     "radio_testimony": {
         "name": "陈站长的证词",
         "text": "21:47 听到的是广播站内线监听设备的声音，当时没有对全镇播放。22:16 才正式播报寻人启事；这两个时间对应不同事件。"
+    },
+    "town_echo": {
+        "name": "镇中心的回声",
+        "text": "从广播站回到街上时，原本空荡的巷口响起三次敲门声。广播喇叭没有接电，却传来一句：『怀声镇的乡亲，请不要回答。』声音与录音内的异常节奏一致。"
     }
 }
 const REQUIRED := ["poster", "ledger", "log", "tape"]
@@ -61,6 +66,7 @@ var layer: CanvasLayer
 var hud: Control
 var title_label: Label
 var help_label: Label
+var objective_label: Label
 var prompt_label: Label
 var crosshair: Label
 var modal: PanelContainer
@@ -76,6 +82,7 @@ func _ready() -> void:
     add_child(ambience)
     _create_ui()
     _go_to("street", true)
+    get_viewport().size_changed.connect(_layout_modal)
     if finished:
         _message("《旧梦乡》· 广播里的人",
             "你已经揭开了这起案件的第一层矛盾。\n\n档案与线索仍然保留。按 J 可以重新阅读调查笔记。")
@@ -123,6 +130,18 @@ func _create_ui() -> void:
     help_label.add_theme_font_size_override("font_size", 16)
     help_label.add_theme_color_override("font_color", Color(0.82, 0.82, 0.77))
     hud.add_child(help_label)
+    objective_label = Label.new()
+    objective_label.anchor_left = 1.0
+    objective_label.anchor_right = 1.0
+    objective_label.offset_left = -380.0
+    objective_label.offset_right = -25.0
+    objective_label.offset_top = 20.0
+    objective_label.offset_bottom = 84.0
+    objective_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+    objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    objective_label.add_theme_font_size_override("font_size", 17)
+    objective_label.add_theme_color_override("font_color", Color(0.96, 0.82, 0.60))
+    hud.add_child(objective_label)
     crosshair = Label.new()
     crosshair.text = "·"
     crosshair.set_anchors_preset(Control.PRESET_CENTER)
@@ -157,6 +176,18 @@ func _create_ui() -> void:
     modal.add_theme_stylebox_override("panel", style)
     modal.visible = false
     layer.add_child(modal)
+    _layout_modal()
+
+func _layout_modal() -> void:
+    if modal == null:
+        return
+    var view: Vector2 = get_viewport().get_visible_rect().size
+    var half_width: float = minf(350.0, maxf(160.0, (view.x - 36.0) * 0.5))
+    var half_height: float = minf(240.0, maxf(130.0, (view.y - 36.0) * 0.5))
+    modal.offset_left = -half_width
+    modal.offset_right = half_width
+    modal.offset_top = -half_height
+    modal.offset_bottom = half_height
 
 func _begin_modal(heading: String) -> VBoxContainer:
     for old in modal.get_children():
@@ -173,7 +204,7 @@ func _begin_modal(heading: String) -> VBoxContainer:
     scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
     margin.add_child(scroller)
-    stack.custom_minimum_size = Vector2(620, 0)
+    stack.custom_minimum_size = Vector2(maxf(240.0, modal.offset_right - modal.offset_left - 85.0), 0)
     scroller.add_child(stack)
     var title := Label.new()
     title.text = heading
@@ -238,6 +269,13 @@ func _go_to(zone: String, initial: bool = false) -> void:
     player.rotation.y = 0
     eye.rotation.x = 0
     _update_location_label()
+    _update_objective()
+    # The first return to town after hearing the private recording is a quiet, one-shot anomaly.
+    if not initial and zone == "street" and collected.has("tape") and not collected.has("town_echo"):
+        collected["town_echo"] = true
+        _save()
+        ambience.play_radio_anomaly()
+        _message("异常记录 · 失声的广播", str(EVIDENCE["town_echo"]["text"]))
 
 func _set_mood(unstable: bool) -> void:
     var atmosphere := get_node_or_null("WorldEnvironment") as WorldEnvironment
@@ -248,6 +286,25 @@ func _set_mood(unstable: bool) -> void:
         atmosphere.environment.fog_density = 0.016 if unstable else 0.009
     if sunlight != null:
         sunlight.light_energy = 0.49 if unstable else 0.9
+
+func _update_objective() -> void:
+    if objective_label == null:
+        return
+    if finished:
+        objective_label.text = "第一案已结 · 按 J 回看笔记"
+        return
+    if _ready_to_deduce():
+        objective_label.text = "线索已齐 · 按 J 整理时间线并推理"
+        return
+    var count: int = _required_found()
+    if not collected.has("poster"):
+        objective_label.text = "当前目标 · 寻找镇口的寻人启事"
+    elif not collected.has("ledger"):
+        objective_label.text = "当前目标 · 查看小卖部账本"
+    elif not collected.has("log") or not collected.has("tape"):
+        objective_label.text = "当前目标 · 调查旧广播站"
+    else:
+        objective_label.text = "关键线索 " + str(count) + " / 4"
 
 func _update_location_label() -> void:
     var names := {"street": "怀声镇 · 镇中心", "shop": "吉祥小卖部", "radio": "旧广播站", "shrine": "怀声祠"}
@@ -260,25 +317,14 @@ func _process(_delta: float) -> void:
         prompt_label.text = ""
         focus_id = ""
         return
-    var best_score: float = -99.0
     focus_id = ""
-    var chosen_name: String = ""
-    var view: Vector3 = -eye.global_transform.basis.z
-    for entry in world.hotspots:
-        var target: Vector3 = entry["position"]
-        var diff: Vector3 = target - eye.global_position
-        var distance: float = diff.length()
-        if distance > 3.2 or distance < 0.01:
-            continue
-        var alignment: float = view.dot(diff.normalized())
-        if alignment < 0.35:
-            continue
-        var score: float = alignment * 3.0 - distance * 0.32
-        if score > best_score:
-            best_score = score
-            focus_id = entry["id"]
-            chosen_name = entry["name"]
-    prompt_label.text = ("[ E ]  " + chosen_name) if focus_id != "" else ""
+    prompt_label.text = ""
+    if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+        return
+    var selected: Dictionary = Interaction.choose(eye, world.hotspots, get_world_3d().direct_space_state)
+    if not selected.is_empty():
+        focus_id = str(selected["id"])
+        prompt_label.text = "[ E ]  " + str(selected["name"])
 
 func _input(event: InputEvent) -> void:
     if event is InputEventKey and event.pressed and not event.echo:
@@ -332,7 +378,10 @@ func _interview_topic(person: String, topic_id: String) -> void:
             collected[clue] = true
             _save()
         var suffix: String = "\n\n（新证词已收入调查笔记）" if clue != "" else ""
-        _message(str(witness["name"]), str(topic["text"]) + suffix)
+        var stack := _begin_modal(str(witness["name"]))
+        _add_text(stack, str(topic["text"]) + suffix, 240.0)
+        _add_button(stack, "继续问话", Callable(self, "_interview").bind(person))
+        _add_button(stack, "结束问话", Callable(self, "_close_modal"))
         return
 
 func _investigate(id: String) -> void:
@@ -342,6 +391,7 @@ func _investigate(id: String) -> void:
     collected[id] = true
     if first_time:
         _save()
+    _update_objective()
     if first_time and id == "tape":
         world.haunted = true
         world.build_zone(current_zone)
@@ -413,6 +463,7 @@ func _answer(selection: String) -> void:
     ambience.play_last_call()
     _save()
     _update_location_label()
+    _update_objective()
     var witness_note: String = ""
     if collected.has("shop_testimony") and collected.has("radio_testimony"):
         witness_note = "\n\n你还确认了两条容易被误读的证词：账本只能证明有人叫了小禾的名字，内线录音不等于全镇广播。"
