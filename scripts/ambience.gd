@@ -69,6 +69,11 @@ func _make_clip(kind: String, seconds: float, loop: bool) -> AudioStreamWAV:
                 var crackle: float = pow(maxf(0.0, sin(TAU * 3.7 * t)), 18.0)
                 sound = 0.18 * noise_state + 0.066 * sin(TAU * 63.0 * t)
                 sound += crackle * 0.12 * rng.randf_range(-1.0, 1.0)
+            "school":
+                # Quiet classroom fan, distant cicadas and a faint faulty fluorescent tube.
+                var fan_pulse: float = 0.64 + 0.36 * sin(TAU * 3.3 * t)
+                sound = 0.18 * noise_state + 0.055 * sin(TAU * 49.8 * t) * fan_pulse
+                sound += 0.025 * sin(TAU * 2100.0 * t) * maxf(0.0, sin(TAU * 0.53 * t))
             "shrine":
                 # Distant wind and a slightly detuned low drone.
                 sound = 0.45 * noise_state + 0.055 * sin(TAU * 75.5 * t)
