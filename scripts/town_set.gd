@@ -219,7 +219,7 @@ static func _awning(root: Node3D, side: int, z: float, width: float, color: Colo
 
 static func _notice(root: Node3D) -> void:
     # Landmark replaces the former giant floating yellow sheet at the centre of the road.
-    var x: float = -1.30
+    var x: float = -4.55
     var z: float = 12.00
     for dx in [-0.63, 0.63]:
         _box(root, Vector3(x + dx, 0.84, z - 0.08), Vector3(0.11, 1.66, 0.15),
@@ -231,7 +231,7 @@ static func _notice(root: Node3D) -> void:
     _box(root, Vector3(x, 2.20, z), Vector3(1.63, 0.11, 0.45),
         Color(0.30, 0.32, 0.28), "steel")
     _text(root, "寻 人 启 事\n2003.7.17\n林小禾 · 11岁",
-        Vector3(x, 1.52, z + 0.13), 21, Color(0.30, 0.31, 0.29))
+        Vector3(x, 1.52, z + 0.13), 27, Color(0.30, 0.31, 0.29))
     for dx in [-0.49, 0.49]:
         _disk(root, Vector3(x + dx, 1.98, z + 0.15),
             0.028, 0.018, Color(0.62, 0.17, 0.15), "brass")
