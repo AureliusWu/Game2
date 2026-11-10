@@ -23,6 +23,8 @@ func build_zone(zone: String) -> void:
             _build_radio()
         "shrine":
             _build_shrine()
+        "school":
+            _build_school()
         _:
             push_error("Unknown zone: " + zone)
     Dressing.decorate(self, zone, haunted)
@@ -153,6 +155,8 @@ func _build_street() -> void:
     _label("2003 · 寻人启事", Vector3(-1.2, 2.35, 12), 32)
     _label("吉祥小卖部", Vector3(-4.8, 3.1, 4), 36)
     _label("旧广播站", Vector3(4.85, 3.5, -8), 36)
+    _label("怀声镇小学", Vector3(6.84, 3.5, 14), 31)
+    _box(Vector3(6.87, 1.38, 14), Vector3(0.10, 2.7, 1.55), Color(0.30, 0.37, 0.32), false, false, "wood")
     _label("怀声祠", Vector3(0, 4.1, -26.8), 40)
     for z in [13.0, -4.0, -20.0]:
         _lamp_post(Vector3(-4.0, 0.0, z))
@@ -162,6 +166,7 @@ func _build_street() -> void:
     _spot("enter_shop", "进入小卖部", Vector3(-4.0, 1.2, 4.0))
     _spot("enter_radio", "进入广播站", Vector3(4.0, 1.2, -8.0))
     _spot("enter_shrine", "进入祠堂", Vector3(0, 1.2, -26.6))
+    _spot("enter_school", "进入镇小学", Vector3(5.90, 1.2, 13.0))
 
 func _room(floor: Color, wall: Color) -> void:
     _box(Vector3(0, -0.23, 0), Vector3(12, 0.45, 12), floor, true, false, "tile")
@@ -232,3 +237,32 @@ func _placeholder_person(pos: Vector3, coat: Color) -> void:
     head.position = pos + Vector3(0, 1.60, 0)
     head.material_override = _material(Color(0.67, 0.54, 0.40), false, "plaster")
     add_child(head)
+
+
+func _build_school() -> void:
+    # 2003 summer school radio-club room: optional, self-contained, no chase/combat.
+    _room(Color(0.52, 0.49, 0.39), Color(0.69, 0.66, 0.55))
+    _box(Vector3(0, 2.9, -5.72), Vector3(6.6, 2.15, 0.08), Color(0.20, 0.30, 0.26), false, false, "wood")
+    _label("怀声镇小学  /  暑期播音训练", Vector3(0, 4.6, -5.53), 31)
+    _label("最后一节课  20:30", Vector3(0, 3.0, -5.48), 27)
+    for row in range(3):
+        for column in range(3):
+            var x: float = -3.65 + float(column) * 3.05
+            var z: float = -3.0 + float(row) * 2.25
+            _box(Vector3(x, 0.84, z), Vector3(1.10, 0.09, 0.66), Color(0.44, 0.32, 0.22), false, false, "wood")
+            _cylinder(Vector3(x - 0.42, 0.42, z - 0.24), 0.055, 0.80, Color(0.22, 0.25, 0.24), "metal")
+            _cylinder(Vector3(x + 0.42, 0.42, z + 0.24), 0.055, 0.80, Color(0.22, 0.25, 0.24), "metal")
+            _box(Vector3(x, 0.55, z + 0.62), Vector3(0.85, 0.07, 0.32), Color(0.36, 0.29, 0.20), false, false, "wood")
+    # A roll book on teacher's desk; a recorded-rehearsal exercise booklet.
+    _box(Vector3(-4.1, 0.78, -4.8), Vector3(2.15, 1.55, 0.6), Color(0.38, 0.32, 0.25), true, false, "wood")
+    _box(Vector3(-4.05, 1.6, -4.42), Vector3(1.12, 0.06, 0.52), Color(0.80, 0.73, 0.57), false, false, "paper")
+    _label("20:43  /  校务交接", Vector3(-3.95, 2.35, -4.6), 25)
+    _spot("school_register", "查阅校务交接簿", Vector3(-4.0, 1.45, -3.75))
+    _box(Vector3(2.85, 1.07, -3.05), Vector3(0.70, 0.05, 0.52), Color(0.83, 0.75, 0.61), false, false, "paper")
+    _label("林小禾的练声簿", Vector3(2.85, 1.7, -3.05), 23)
+    _spot("school_notebook", "翻开练声簿", Vector3(2.85, 1.35, -2.48))
+    _box(Vector3(4.7, 3.1, -5.75), Vector3(0.58, 0.70, 0.08), Color(0.84, 0.74, 0.50), false, false, "paper")
+    _label("校铃已停用", Vector3(4.7, 4.0, -5.58), 22)
+    _light(Vector3(0, 5.4, 0), Color(0.90, 0.83, 0.64), 0.75, 11.0)
+    if haunted:
+        _label("请勿跟读", Vector3(0, 2.1, -5.46), 28)
