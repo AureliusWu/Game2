@@ -140,7 +140,7 @@ func _build_street() -> void:
     # Main street now has an independently art-directed world-space set.
     TownSet.build(self, haunted)
     # Preserve the exact collectible IDs and coordinates used by first-case saves.
-    _spot("poster", "查看寻人启事", Vector3(-1.3, 1.3, 12.0))
+    _spot("poster", "查看寻人启事", Vector3(-4.55, 1.3, 12.0))
     _spot("public_phone", "查看公用电话", Vector3(4.1, 1.45, 16.0))
     _spot("enter_shop", "进入小卖部", Vector3(-4.0, 1.2, 4.0))
     _spot("enter_radio", "进入广播站", Vector3(4.0, 1.2, -8.0))
