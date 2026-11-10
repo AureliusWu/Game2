@@ -110,7 +110,7 @@ func _create_ui() -> void:
     hud.add_child(title_label)
     help_label = Label.new()
     help_label.position = Vector2(24, 58)
-    help_label.text = "WASD 移动 · 鼠标观察 · Shift 快走 · E/F 调查 · J 笔记 · Esc 鼠标"
+    help_label.text = "WASD 移动 · 鼠标观察 · Shift 快走 · E/F 调查 · J 笔记 · Esc 退出界面"
     help_label.add_theme_font_size_override("font_size", 16)
     help_label.add_theme_color_override("font_color", Color(0.82, 0.82, 0.77))
     hud.add_child(help_label)
@@ -160,7 +160,12 @@ func _begin_modal(heading: String) -> VBoxContainer:
     modal.add_child(margin)
     var stack := VBoxContainer.new()
     stack.add_theme_constant_override("separation", 14)
-    margin.add_child(stack)
+    var scroller := ScrollContainer.new()
+    scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    margin.add_child(scroller)
+    stack.custom_minimum_size = Vector2(620, 0)
+    scroller.add_child(stack)
     var title := Label.new()
     title.text = heading
     title.add_theme_font_size_override("font_size", 28)
