@@ -3,6 +3,7 @@ const Dressing = preload("res://scripts/dressing.gd")
 const StoryDressing = preload("res://scripts/story_dressing.gd")
 const Characters = preload("res://scripts/characters.gd")
 const RadioSet = preload("res://scripts/radio_set.gd")
+const TownSet = preload("res://scripts/town_set.gd")
 const Materials = preload("res://scripts/materials.gd")
 ## Procedural 3D graybox for Case 01. Replace meshes/materials with licensed PBR assets later.
 ## Coordinates are in meters; interactable nodes are represented by stable hotspot IDs.
@@ -27,7 +28,7 @@ func build_zone(zone: String) -> void:
             _build_shrine()
         _:
             push_error("Unknown zone: " + zone)
-    if zone != "radio":
+    if zone != "radio" and zone != "street":
         Dressing.decorate(self, zone, haunted)
         StoryDressing.decorate(self, zone, haunted)
         _light(Vector3(0, 7, 0), Color(0.83, 0.87, 1.0), 0.3, 23.0)
@@ -97,7 +98,8 @@ func _light(pos: Vector3, color: Color, power: float, reach: float) -> void:
 
 func _spot(id: String, name: String, pos: Vector3) -> void:
     hotspots.append({"id": id, "name": name, "position": pos})
-    _box(pos + Vector3(0, -0.42, 0), Vector3(0.15, 0.15, 0.15), Color(0.93, 0.70, 0.31), false, true)
+    if current_zone != "street":
+        _box(pos + Vector3(0, -0.42, 0), Vector3(0.15, 0.15, 0.15), Color(0.93, 0.70, 0.31), false, true)
 
 func _building(pos: Vector3, size: Vector3, wall: Color, roof: Color) -> void:
     _box(pos, size, wall, true, false, "plaster")
@@ -135,31 +137,9 @@ func _lamp_post(pos: Vector3) -> void:
     _light(pos + Vector3(0, 3.8, 0), Color(1.0, 0.72, 0.43), 1.5, 11.0)
 
 func _build_street() -> void:
-    var plaster := Color(0.57, 0.57, 0.49)
-    var roof := Color(0.23, 0.28, 0.28)
-    _box(Vector3(0, -0.24, -8), Vector3(120, 0.45, 115), Color(0.38, 0.42, 0.37), true, false, "concrete")
-    _box(Vector3(0, -0.005, -3), Vector3(8.3, 0.04, 75), Color(0.28, 0.29, 0.27), false, false, "asphalt")
-    _box(Vector3(-4.45, 0.05, -2), Vector3(0.65, 0.13, 77), Color(0.58, 0.53, 0.43))
-    _box(Vector3(4.45, 0.05, -2), Vector3(0.65, 0.13, 77), Color(0.58, 0.53, 0.43))
-    for i in range(9):
-        _box(Vector3(0, 0.04, 22 - i * 7), Vector3(0.1, 0.018, 2.2), Color(0.65, 0.60, 0.43))
-    _building(Vector3(-9, 3.15, 4), Vector3(7.5, 6.3, 11), Color(0.56, 0.52, 0.42), roof)
-    _building(Vector3(9, 3.65, -8), Vector3(7.5, 7.3, 11), Color(0.48, 0.55, 0.50), roof)
-    _building(Vector3(-11, 2.6, -16), Vector3(10.5, 5.2, 12), plaster, roof)
-    _building(Vector3(11, 3.1, 14), Vector3(8.2, 6.2, 9.0), Color(0.54, 0.56, 0.52), roof)
-    _building(Vector3(0, 3.3, -32), Vector3(15.0, 6.6, 8.3), Color(0.38, 0.36, 0.32), Color(0.19, 0.23, 0.23))
-    # Doors, old advertisements, a weathered shrine gate, dim street lamps.
-    _box(Vector3(-5.12, 1.3, 4), Vector3(0.09, 2.5, 1.45), Color(0.27, 0.43, 0.39))
-    _box(Vector3(5.12, 1.45, -8), Vector3(0.09, 2.75, 1.50), Color(0.25, 0.35, 0.35))
-    _box(Vector3(0, 1.6, -27.78), Vector3(2.5, 3.15, 0.1), Color(0.26, 0.20, 0.17))
-    _box(Vector3(-1.2, 1.3, 12.0), Vector3(0.12, 1.7, 1.25), Color(0.92, 0.83, 0.56))
-    _label("2003 · 寻人启事", Vector3(-1.2, 2.35, 12), 32)
-    _label("吉祥小卖部", Vector3(-4.8, 3.1, 4), 36)
-    _label("旧广播站", Vector3(4.85, 3.5, -8), 36)
-    _label("怀声祠", Vector3(0, 4.1, -26.8), 40)
-    for z in [13.0, -4.0, -20.0]:
-        _lamp_post(Vector3(-4.0, 0.0, z))
-    _lamp_post(Vector3(4.0, 0.0, -13))
+    # Main street now has an independently art-directed world-space set.
+    TownSet.build(self, haunted)
+    # Preserve the exact collectible IDs and coordinates used by first-case saves.
     _spot("poster", "查看寻人启事", Vector3(-1.3, 1.3, 12.0))
     _spot("public_phone", "查看公用电话", Vector3(4.1, 1.45, 16.0))
     _spot("enter_shop", "进入小卖部", Vector3(-4.0, 1.2, 4.0))
