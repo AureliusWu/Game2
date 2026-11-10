@@ -48,6 +48,10 @@ const EVIDENCE := {
     "town_echo": {
         "name": "镇中心的回声",
         "text": "从广播站回到街上时，原本空荡的巷口响起三次敲门声。广播喇叭没有接电，却传来一句：『怀声镇的乡亲，请不要回答。』声音与录音内的异常节奏一致。"
+    ,
+    "phone_whisper": {
+        "name": "无人的公用电话",
+        "text": "广播站的录音之后，公用电话竟然自己响了三声。听筒里没有语言，只有与林小禾录音同样的断续节拍。电话线已被剪断，柜体上仍贴着『九月起撤机』的旧告示。"
     }
 }
 const REQUIRED := ["poster", "ledger", "log", "tape"]
@@ -353,7 +357,18 @@ func _interact(id: String) -> void:
         "enter_shrine": _go_to("shrine")
         "exit": _go_to("street")
         "npc_shop", "npc_radio": _interview(id)
+        "public_phone": _inspect_phone()
         _: _investigate(id)
+
+func _inspect_phone() -> void:
+    if not collected.has("tape"):
+        _message("镇中心 · 公用电话", "电话听筒冰凉，没有拨号音。机身上写着：『九月起撤机』。")
+        return
+    if not collected.has("phone_whisper"):
+        collected["phone_whisper"] = true
+        _save()
+        ambience.play_radio_anomaly()
+    _message("异常记录 · 没有接线的电话", str(EVIDENCE["phone_whisper"]["text"]))
 
 func _interview(person: String) -> void:
     if not Interviews.PEOPLE.has(person):
