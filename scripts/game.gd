@@ -52,6 +52,18 @@ const EVIDENCE := {
     "phone_whisper": {
         "name": "无人的公用电话",
         "text": "广播站的录音之后，公用电话竟然自己响了三声。听筒里没有语言，只有与林小禾录音同样的断续节拍。电话线已被剪断，柜体上仍贴着『九月起撤机』的旧告示。"
+    },
+    "school_register": {
+        "name": "小学夜间交接簿",
+        "text": "2003 年 7 月 17 日，暑期播音训练晚课于 20:30 结束。20:43，老师在交接簿上登记林小禾独自离校。21:10 发布寻人启事。交接簿能证明离校时间，无法说明之后谁跟她说过话。"
+    },
+    "school_notebook": {
+        "name": "林小禾的练声簿",
+        "text": "林小禾在广播练习本边缘写着：『我念完一句，机器里总有个声音比我慢一点；我停下，它还在接着念。』这只是孩子的记录，尚不能证实声音来自何处。"
+    },
+    "identity_check": {
+        "name": "证据互证：名字与目击",
+        "text": "学校交接簿记录她 7 月 17 日 20:43 离校，7 月 20 日小卖部账本却出现她的名字。吴婶指出记账来自隔门传来的自报姓名，没有任何人确认报名字的是林小禾本人。账本不能证明失踪者返回。"
     }
 }
 const REQUIRED := ["poster", "ledger", "log", "tape"]
@@ -266,6 +278,7 @@ func _go_to(zone: String, initial: bool = false) -> void:
                     "shop": spawn = Vector3(-3.4, 1.01, 4)
                     "radio": spawn = Vector3(3.4, 1.01, -8)
                     "shrine": spawn = Vector3(0, 1.01, -24)
+                    "school": spawn = Vector3(5.3, 1.01, 13.0)
             player.global_position = spawn
         _:
             player.global_position = Vector3(0, 1.01, 3.1)
@@ -298,7 +311,7 @@ func _update_objective() -> void:
         objective_label.text = "第一案已结 · 按 J 回看笔记"
         return
     if _ready_to_deduce():
-        objective_label.text = "线索已齐 · 按 J 整理时间线并推理"
+        objective_label.text = "主线已齐 · J 推理；小学有可选补充证据"
         return
     var count: int = _required_found()
     if not collected.has("poster"):
@@ -311,7 +324,7 @@ func _update_objective() -> void:
         objective_label.text = "关键线索 " + str(count) + " / 4"
 
 func _update_location_label() -> void:
-    var names := {"street": "怀声镇 · 镇中心", "shop": "吉祥小卖部", "radio": "旧广播站", "shrine": "怀声祠"}
+    var names := {"street": "怀声镇 · 镇中心", "shop": "吉祥小卖部", "radio": "旧广播站", "shrine": "怀声祠", "school": "怀声镇小学"}
     title_label.text = "旧梦乡 / " + names.get(current_zone, current_zone)
     if finished:
         title_label.text += "  ·  第一案已结"
@@ -355,6 +368,7 @@ func _interact(id: String) -> void:
         "enter_shop": _go_to("shop")
         "enter_radio": _go_to("radio")
         "enter_shrine": _go_to("shrine")
+        "enter_school": _go_to("school")
         "exit": _go_to("street")
         "npc_shop", "npc_radio": _interview(id)
         "public_phone": _inspect_phone()
@@ -445,6 +459,8 @@ func _journal() -> void:
         _add_text(evidence_list, "【" + item["name"] + "】\n" + item["text"], 82)
     if discovered_count == 0:
         _add_text(evidence_list, "还没有收集任何线索。先调查街道上的寻人启事。", 100)
+    if _can_corroborate() and not collected.has("identity_check"):
+        _add_button(stack, "对照账本与人证 · 可选互证", Callable(self, "_corroboration"))
     if _ready_to_deduce():
         _add_button(stack, "整理时间线 · 开始推理", Callable(self, "_deduction"))
     else:
@@ -457,6 +473,34 @@ func _required_found() -> int:
         if collected.has(id):
             n += 1
     return n
+
+func _can_corroborate() -> bool:
+    return collected.has("school_register") and collected.has("ledger") and collected.has("shop_testimony")
+
+func _corroboration() -> void:
+    if not _can_corroborate():
+        return
+    var stack := _begin_modal("证词互证 · 7 月 20 日的小卖部")
+    _add_text(stack,
+        "20:43，林小禾被登记离开学校。\n21:10，寻人启事发布。\n7 月 20 日，账本出现她的名字。\n\n吴婶说，丈夫只隔着卷帘门听到对方自报姓名。\n\n这几份材料能够证明什么？", 185)
+    _add_button(stack, "A. 账本证明林小禾三天后回过小卖部", func(): _corroboration_answer("A"))
+    _add_button(stack, "B. 只有姓名记录，无法确认喊话者身份", func(): _corroboration_answer("B"))
+    _add_button(stack, "返回调查笔记", Callable(self, "_journal"))
+
+func _corroboration_answer(choice: String) -> void:
+    if not _can_corroborate():
+        return
+    if choice != "B":
+        _message("互证不成立",
+            "账本是记账的证明，未必是目击的证明。吴婶甚至没有看到喊话的人。再核对一次“是谁记下名字”和“谁真正出现”。")
+        return
+    var first: bool = not collected.has("identity_check")
+    collected["identity_check"] = true
+    if first:
+        _save()
+    _update_objective()
+    _message("证据互证完成", str(EVIDENCE["identity_check"]["text"]) +
+        "\n\n结论已收入笔记。这一层疑点得到合理解释，但无法确认林小禾真正去了哪里。")
 
 func _deduction() -> void:
     if not _ready_to_deduce():
@@ -482,6 +526,8 @@ func _answer(selection: String) -> void:
     var witness_note: String = ""
     if collected.has("shop_testimony") and collected.has("radio_testimony"):
         witness_note = "\n\n你还确认了两条容易被误读的证词：账本只能证明有人叫了小禾的名字，内线录音不等于全镇广播。"
+    if collected.has("identity_check"):
+        witness_note += "\n\n你在镇小学核对过离校记录。至此，失踪前的 20:43、报失踪的 21:10，以及那张三天后的赊账单，终于不再互相矛盾。"
     _message("第一案 · 尾声",
         "你终于确定：广播并不是模仿者诞生的起点。\n\n21:47，有人已经在模仿林小禾。\n22:16，那段声音经广播传遍了怀声镇。\n\n广播站的电源突然熄灭。\n你从身后的喇叭听见自己的声音：\n\n『调查结束了。可以回家了。』\n\n—— 第一案原型完成。真正的失踪之谜仍未揭开。" + witness_note)
 
