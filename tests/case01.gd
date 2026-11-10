@@ -33,6 +33,21 @@ func _check(game: Node) -> void:
             if not found.has(wanted):
                 _fail("Missing hotspot " + wanted + " in " + zone)
                 return
+    # Verify environment art nodes exist before and after the tape anomaly.
+    game.call("_go_to", "shop")
+    if world.get_child_count() < 35:
+        _fail("Shop environment dressing unexpectedly missing")
+        return
+    game.call("_go_to", "street")
+    var before_anomaly: int = world.get_child_count()
+    world.set("haunted", true)
+    world.call("build_zone", "street")
+    var after_anomaly: int = world.get_child_count()
+    if after_anomaly <= before_anomaly:
+        _fail("Anomaly dressing did not add visual cues")
+        return
+    world.set("haunted", false)
+    game.call("_go_to", "street")
     var ambience = game.get("ambience")
     if ambience == null:
         _fail("Ambient audio node missing")

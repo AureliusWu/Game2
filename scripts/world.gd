@@ -1,5 +1,6 @@
 extends Node3D
 const Dressing = preload("res://scripts/dressing.gd")
+const StoryDressing = preload("res://scripts/story_dressing.gd")
 const Materials = preload("res://scripts/materials.gd")
 ## Procedural 3D graybox for Case 01. Replace meshes/materials with licensed PBR assets later.
 ## Coordinates are in meters; interactable nodes are represented by stable hotspot IDs.
@@ -25,6 +26,7 @@ func build_zone(zone: String) -> void:
         _:
             push_error("Unknown zone: " + zone)
     Dressing.decorate(self, zone, haunted)
+    StoryDressing.decorate(self, zone, haunted)
     _light(Vector3(0, 7, 0), Color(0.83, 0.87, 1.0), 0.3, 23.0)
 
 func _material(color: Color, emissive: bool = false, surface: String = "") -> StandardMaterial3D:
