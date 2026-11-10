@@ -1,4 +1,5 @@
 extends SceneTree
+const Interaction = preload("res://scripts/interaction.gd")
 ## Deterministic headless checks for the shipped case logic. Not a replacement for desktop play QA.
 
 func _initialize() -> void:
@@ -17,7 +18,7 @@ func _fail(reason: String) -> void:
 
 func _check(game: Node) -> void:
     var expected: Dictionary = {
-        "street": ["poster", "enter_shop", "enter_radio", "enter_shrine"],
+        "street": ["poster", "public_phone", "enter_shop", "enter_radio", "enter_shrine"],
         "shop": ["ledger", "calendar", "npc_shop", "exit"],
         "radio": ["log", "tape", "broadcast_notice", "npc_radio", "exit"],
         "shrine": ["ritual", "tablet", "exit"]
@@ -43,10 +44,42 @@ func _check(game: Node) -> void:
     if sound == null or sound.data.size() == 0:
         _fail("Generated ambient waveform empty")
         return
+    # Public phone should remain mundane until the tape unlocks the anomaly.
+    game.set("collected", {})
+    game.set("finished", false)
+    game.call("_go_to", "street")
+    game.call("_inspect_phone")
+    if (game.get("collected") as Dictionary).has("phone_whisper"):
+        _fail("Phone revealed late clue before tape")
+        return
+    # Centered aiming selects the intended object; looking away rejects it.
+    var camera: Camera3D = game.get_node("Player/Camera3D") as Camera3D
+    var actor: CharacterBody3D = game.get_node("Player") as CharacterBody3D
+    actor.global_position = Vector3(-1.3, 1.01, 14.15)
+    camera.look_at(Vector3(-1.3, 1.3, 12), Vector3.UP)
+    var aimed: Dictionary = Interaction.choose(camera, world.get("hotspots"),
+        game.get_world_3d().direct_space_state)
+    if str(aimed.get("id", "")) != "poster":
+        _fail("Center-gaze interaction did not select poster")
+        return
+    camera.rotation.y += PI
+    var away: Dictionary = Interaction.choose(camera, world.get("hotspots"),
+        game.get_world_3d().direct_space_state)
+    if not away.is_empty():
+        _fail("Interaction still focused on unseen marker")
+        return
     game.call("_go_to", "radio")
     game.call("_investigate", "tape")
     if not world.get("haunted"):
         _fail("First listening to tape must trigger visual anomaly")
+        return
+    game.call("_go_to", "street")
+    if not (game.get("collected") as Dictionary).has("town_echo"):
+        _fail("First return after tape should record a town echo")
+        return
+    game.call("_inspect_phone")
+    if not (game.get("collected") as Dictionary).has("phone_whisper"):
+        _fail("Post-tape phone should record extra clue")
         return
     # Optional witness statements are persisted and do not bypass the four required clues.
     game.set("collected", {})
@@ -91,5 +124,5 @@ func _check(game: Node) -> void:
     if not FileAccess.file_exists("user://case01-save.json"):
         _fail("Completion did not save")
         return
-    print("CASE01_OK: zones, material architecture, witness dialogues, testimony save, anomaly, deduction")
+    print("CASE01_OK: areas, gaze, post-tape events, interview notes, deduction, save")
     quit(0)
