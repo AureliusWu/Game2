@@ -142,8 +142,8 @@ func _check(game: Node) -> void:
     # Centered aiming selects the intended object; looking away rejects it.
     var camera: Camera3D = game.get_node("Player/Camera3D") as Camera3D
     var actor: CharacterBody3D = game.get_node("Player") as CharacterBody3D
-    actor.global_position = Vector3(-1.3, 1.01, 14.15)
-    camera.look_at(Vector3(-1.3, 1.3, 12), Vector3.UP)
+    actor.global_position = Vector3(-4.55, 1.01, 14.15)
+    camera.look_at(Vector3(-4.55, 1.3, 12), Vector3.UP)
     var aimed: Dictionary = Interaction.choose(camera, world.get("hotspots"),
         game.get_world_3d().direct_space_state)
     if str(aimed.get("id", "")) != "poster":
