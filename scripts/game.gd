@@ -2,6 +2,7 @@ extends Node3D
 ## Case 01: 广播里的人 — investigation, dialogue, deduction. No combat.
 const WorldBuilder = preload("res://scripts/world.gd")
 const Ambience = preload("res://scripts/ambience.gd")
+const Interviews = preload("res://scripts/interviews.gd")
 const EVIDENCE := {
     "poster": {
         "name": "寻人启事",
@@ -34,6 +35,14 @@ const EVIDENCE := {
     "tablet": {
         "name": "无名牌位",
         "text": "祠堂正中的牌位没有姓氏，只有两个深浅不同的刻痕。香灰沿桌边排成整齐的线，像有人在数经过这里的声音。"
+    },
+    "shop_testimony": {
+        "name": "吴婶的证词",
+        "text": "7 月 20 日小卖部账本上的林小禾，是吴婶丈夫隔着卷帘门听人报出的名字。吴婶没有看见小禾本人。姓名记录不等于在场证明。"
+    },
+    "radio_testimony": {
+        "name": "陈站长的证词",
+        "text": "21:47 听到的是广播站内线监听设备的声音，当时没有对全镇播放。22:16 才正式播报寻人启事；这两个时间对应不同事件。"
     }
 }
 const REQUIRED := ["poster", "ledger", "log", "tape"]
@@ -297,7 +306,34 @@ func _interact(id: String) -> void:
         "enter_radio": _go_to("radio")
         "enter_shrine": _go_to("shrine")
         "exit": _go_to("street")
+        "npc_shop", "npc_radio": _interview(id)
         _: _investigate(id)
+
+func _interview(person: String) -> void:
+    if not Interviews.PEOPLE.has(person):
+        return
+    var witness: Dictionary = Interviews.PEOPLE[person]
+    var stack := _begin_modal("问话 · " + str(witness["name"]))
+    _add_text(stack, str(witness["intro"]), 155.0)
+    for topic in witness["topics"]:
+        var id: String = str(topic["id"])
+        _add_button(stack, str(topic["label"]), Callable(self, "_interview_topic").bind(person, id))
+    _add_button(stack, "结束问话", Callable(self, "_close_modal"))
+
+func _interview_topic(person: String, topic_id: String) -> void:
+    if not Interviews.PEOPLE.has(person):
+        return
+    var witness: Dictionary = Interviews.PEOPLE[person]
+    for topic in witness["topics"]:
+        if str(topic["id"]) != topic_id:
+            continue
+        var clue: String = str(topic.get("evidence", ""))
+        if clue != "" and EVIDENCE.has(clue) and not collected.has(clue):
+            collected[clue] = true
+            _save()
+        var suffix: String = "\n\n（新证词已收入调查笔记）" if clue != "" else ""
+        _message(str(witness["name"]), str(topic["text"]) + suffix)
+        return
 
 func _investigate(id: String) -> void:
     if not EVIDENCE.has(id):
@@ -377,8 +413,11 @@ func _answer(selection: String) -> void:
     ambience.play_last_call()
     _save()
     _update_location_label()
+    var witness_note: String = ""
+    if collected.has("shop_testimony") and collected.has("radio_testimony"):
+        witness_note = "\n\n你还确认了两条容易被误读的证词：账本只能证明有人叫了小禾的名字，内线录音不等于全镇广播。"
     _message("第一案 · 尾声",
-        "你终于确定：广播并不是模仿者诞生的起点。\n\n21:47，有人已经在模仿林小禾。\n22:16，那段声音经广播传遍了怀声镇。\n\n广播站的电源突然熄灭。\n你从身后的喇叭听见自己的声音：\n\n『调查结束了。可以回家了。』\n\n—— 第一案原型完成。真正的失踪之谜仍未揭开。")
+        "你终于确定：广播并不是模仿者诞生的起点。\n\n21:47，有人已经在模仿林小禾。\n22:16，那段声音经广播传遍了怀声镇。\n\n广播站的电源突然熄灭。\n你从身后的喇叭听见自己的声音：\n\n『调查结束了。可以回家了。』\n\n—— 第一案原型完成。真正的失踪之谜仍未揭开。" + witness_note)
 
 func _save() -> void:
     var save_data := {"found": collected.keys(), "finished": finished}
