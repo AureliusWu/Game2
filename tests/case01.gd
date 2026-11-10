@@ -18,9 +18,9 @@ func _fail(reason: String) -> void:
 func _check(game: Node) -> void:
     var expected: Dictionary = {
         "street": ["poster", "enter_shop", "enter_radio", "enter_shrine"],
-        "shop": ["ledger", "exit"],
-        "radio": ["log", "tape", "exit"],
-        "shrine": ["ritual", "exit"]
+        "shop": ["ledger", "calendar", "exit"],
+        "radio": ["log", "tape", "broadcast_notice", "exit"],
+        "shrine": ["ritual", "tablet", "exit"]
     }
     var world: Node = game.get("world")
     for zone in expected.keys():
@@ -32,6 +32,22 @@ func _check(game: Node) -> void:
             if not found.has(wanted):
                 _fail("Missing hotspot " + wanted + " in " + zone)
                 return
+    var ambience = game.get("ambience")
+    if ambience == null:
+        _fail("Ambient audio node missing")
+        return
+    if ambience.ambient_player.stream == null:
+        _fail("No generated ambient waveform")
+        return
+    var sound: AudioStreamWAV = ambience.ambient_player.stream as AudioStreamWAV
+    if sound == null or sound.data.size() == 0:
+        _fail("Generated ambient waveform empty")
+        return
+    game.call("_go_to", "radio")
+    game.call("_investigate", "tape")
+    if not world.get("haunted"):
+        _fail("First listening to tape must trigger visual anomaly")
+        return
     game.set("collected", {})
     game.set("finished", false)
     if game.call("_ready_to_deduce"):
@@ -55,5 +71,5 @@ func _check(game: Node) -> void:
     if not FileAccess.file_exists("user://case01-save.json"):
         _fail("Completion did not save")
         return
-    print("CASE01_OK: all zones, clues, deduction gate, correct/incorrect answers and save")
+    print("CASE01_OK: zones, period props, ambient WAV, tape anomaly, deductions, save")
     quit(0)
