@@ -1,6 +1,7 @@
 extends SceneTree
 const Interaction = preload("res://scripts/interaction.gd")
 const Screenshots = preload("res://scripts/screenshots.gd")
+const RadioFinishes = preload("res://scripts/radio_finishes.gd")
 const TapeSequence = preload("res://scripts/tape_sequence.gd")
 ## Deterministic headless checks for the shipped case logic. Not a replacement for desktop play QA.
 
@@ -45,6 +46,19 @@ func _check(game: Node) -> void:
     var radio_character: Node = world.get_node_or_null("Witness_npc_radio")
     if radio_character == null or radio_character.get_child_count() < 12:
         _fail("Station chief character mesh missing or incomplete")
+        return
+    var station_set: Node = world.get_node_or_null("RadioSet")
+    if station_set == null or station_set.get_child_count() < 140:
+        _fail("Authored broadcast-room furnishings did not build")
+        return
+    var sample_finish: StandardMaterial3D = RadioFinishes.get_finish("wood", Color(0.45, 0.32, 0.21))
+    if sample_finish.normal_texture == null or sample_finish.roughness_texture == null:
+        _fail("Radio studio finishes missing generated PBR channels")
+        return
+    var interior: WorldEnvironment = game.get_node("WorldEnvironment") as WorldEnvironment
+    var direct_sun: DirectionalLight3D = game.get_node("Sunlight") as DirectionalLight3D
+    if interior.environment.ambient_light_energy > 0.45 or direct_sun.light_energy > 0.2:
+        _fail("Indoor radio lighting is still using outdoor light exposure")
         return
     # Character acting must follow dialogue state, and clear on modal exit.
     if shop_character.get_node_or_null("HeadPivot") == null or shop_character.get_node_or_null("HandsPivot") == null:
@@ -212,5 +226,5 @@ func _check(game: Node) -> void:
     if not FileAccess.file_exists("user://case01-save.json"):
         _fail("Completion did not save")
         return
-    print("CASE01_OK: gated tape playback/cancel/replay/audio, witness, clues, deduction, save")
+    print("CASE01_OK: radio slice materials/lighting,  gated tape playback/cancel/replay/audio, witness, clues, deduction, save")
     quit(0)

@@ -2,6 +2,7 @@ extends Node3D
 const Dressing = preload("res://scripts/dressing.gd")
 const StoryDressing = preload("res://scripts/story_dressing.gd")
 const Characters = preload("res://scripts/characters.gd")
+const RadioSet = preload("res://scripts/radio_set.gd")
 const Materials = preload("res://scripts/materials.gd")
 ## Procedural 3D graybox for Case 01. Replace meshes/materials with licensed PBR assets later.
 ## Coordinates are in meters; interactable nodes are represented by stable hotspot IDs.
@@ -26,9 +27,10 @@ func build_zone(zone: String) -> void:
             _build_shrine()
         _:
             push_error("Unknown zone: " + zone)
-    Dressing.decorate(self, zone, haunted)
-    StoryDressing.decorate(self, zone, haunted)
-    _light(Vector3(0, 7, 0), Color(0.83, 0.87, 1.0), 0.3, 23.0)
+    if zone != "radio":
+        Dressing.decorate(self, zone, haunted)
+        StoryDressing.decorate(self, zone, haunted)
+        _light(Vector3(0, 7, 0), Color(0.83, 0.87, 1.0), 0.3, 23.0)
 
 func _material(color: Color, emissive: bool = false, surface: String = "") -> StandardMaterial3D:
     if surface != "" and not emissive:
@@ -191,18 +193,14 @@ func _build_shop() -> void:
     _spot("npc_shop", "询问吴婶", Vector3(-3.6, 1.42, 0.1))
 
 func _build_radio() -> void:
-    _room(Color(0.34, 0.35, 0.34), Color(0.51, 0.56, 0.52))
-    _box(Vector3(0, 0.55, -2.8), Vector3(5, 1.1, 1.3), Color(0.34, 0.29, 0.24), true)
-    for x in [-1.6, 0.0, 1.6]:
-        _box(Vector3(x, 1.25, -3), Vector3(1.1, 0.85, 0.5), Color(0.13, 0.20, 0.22))
-        _box(Vector3(x, 1.25, -2.73), Vector3(0.78, 0.50, 0.07), Color(0.22, 0.48, 0.51), false, true)
-    _cylinder(Vector3(2.7, 1.53, -2.3), 0.08, 0.55, Color(0.16, 0.17, 0.16))
-    _label("值班日志", Vector3(-2.0, 2.55, -2.4))
-    _label("磁带录音", Vector3(2.0, 2.55, -2.4))
-    _spot("log", "阅读值班日志", Vector3(-2.0, 1.45, -1.9))
-    _spot("tape", "播放旧录音", Vector3(2.0, 1.45, -1.9))
-    _spot("broadcast_notice", "查看停播通知", Vector3(-4.1, 2.7, -4.7))
-    Characters.build(self, "npc_radio", Vector3(3.35, 0, 0.5))
+    # One complete art-directed slice; no legacy greybox boxes underneath it.
+    RadioSet.build(self, haunted)
+    # Stable hotspot IDs preserve quest logic, dialogue and existing save files.
+    _spot("exit", "返回街道", Vector3(0.0, 1.25, 4.4))
+    _spot("log", "阅读值班日志", Vector3(-2.0, 1.45, -1.64))
+    _spot("tape", "播放旧录音", Vector3(2.0, 1.45, -1.64))
+    _spot("broadcast_notice", "查看停播通知", Vector3(-4.8, 2.62, -5.38))
+    Characters.build(self, "npc_radio", Vector3(3.35, 0.0, 0.5))
     _spot("npc_radio", "询问陈站长", Vector3(3.35, 1.42, 0.5))
 
 func _build_shrine() -> void:
