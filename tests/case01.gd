@@ -44,6 +44,21 @@ func _check(game: Node) -> void:
     if radio_character == null or radio_character.get_child_count() < 12:
         _fail("Station chief character mesh missing or incomplete")
         return
+    # Character acting must follow dialogue state, and clear on modal exit.
+    if shop_character.get_node_or_null("HeadPivot") == null or shop_character.get_node_or_null("HandsPivot") == null:
+        _fail("Shopkeeper lacks independent animation pivots")
+        return
+    if radio_character.get_node_or_null("HeadPivot") == null or radio_character.get_node_or_null("HandsPivot") == null:
+        _fail("Station chief lacks independent animation pivots")
+        return
+    game.call("_interview", "npc_radio")
+    if not bool(radio_character.get("speaking")):
+        _fail("Dialogue did not activate witness performance")
+        return
+    game.call("_close_modal")
+    if bool(radio_character.get("speaking")):
+        _fail("Witness performance continued after dialogue")
+        return
     # Verify environment art nodes exist before and after the tape anomaly.
     game.call("_go_to", "shop")
     if world.get_child_count() < 35:
