@@ -323,13 +323,24 @@ func _set_mood(unstable: bool) -> void:
     var atmosphere := get_node_or_null("WorldEnvironment") as WorldEnvironment
     var sunlight := get_node_or_null("Sunlight") as DirectionalLight3D
     if atmosphere != null and atmosphere.environment != null:
-        atmosphere.environment.background_color = Color(0.31, 0.37, 0.43) if unstable else Color(0.36, 0.43, 0.46)
-        atmosphere.environment.fog_light_color = Color(0.37, 0.40, 0.45) if unstable else Color(0.46, 0.45, 0.42)
-        atmosphere.environment.fog_density = 0.006 if unstable and current_zone == "radio" else (0.003 if current_zone == "radio" else (0.016 if unstable else 0.009))
-        # Restrained indoor bounce lets the desk practicals establish visual hierarchy.
-        atmosphere.environment.ambient_light_energy = 0.36 if current_zone == "radio" else 0.55
+        if current_zone == "street":
+            # Overcast blue hour, not a brightly sunlit procedural playground.
+            atmosphere.environment.background_color = Color(0.16, 0.22, 0.25) if unstable else Color(0.23, 0.29, 0.30)
+            atmosphere.environment.fog_light_color = Color(0.18, 0.24, 0.28) if unstable else Color(0.29, 0.34, 0.34)
+            atmosphere.environment.fog_density = 0.018 if unstable else 0.009
+            atmosphere.environment.ambient_light_energy = 0.34 if unstable else 0.43
+        else:
+            atmosphere.environment.background_color = Color(0.31, 0.37, 0.43) if unstable else Color(0.36, 0.43, 0.46)
+            atmosphere.environment.fog_light_color = Color(0.37, 0.40, 0.45) if unstable else Color(0.46, 0.45, 0.42)
+            atmosphere.environment.fog_density = 0.006 if unstable and current_zone == "radio" else (0.003 if current_zone == "radio" else (0.016 if unstable else 0.009))
+            atmosphere.environment.ambient_light_energy = 0.36 if current_zone == "radio" else 0.55
     if sunlight != null:
-        sunlight.light_energy = 0.12 if current_zone == "radio" else (0.49 if unstable else 0.9)
+        if current_zone == "street":
+            sunlight.light_energy = 0.24 if unstable else 0.43
+            sunlight.light_color = Color(0.69, 0.80, 0.84)
+        else:
+            sunlight.light_energy = 0.12 if current_zone == "radio" else (0.49 if unstable else 0.9)
+            sunlight.light_color = Color(1.0, 0.78, 0.56)
 
 func _update_objective() -> void:
     if objective_label == null:
