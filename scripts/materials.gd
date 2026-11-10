@@ -14,7 +14,6 @@ static func get_surface(surface: String, tint: Color) -> StandardMaterial3D:
     material.uv1_triplanar = true
     material.uv1_scale = Vector3(0.62, 0.62, 0.62)
     material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-    material.texture_repeat = BaseMaterial3D.TEXTURE_REPEAT_ENABLED
     var img := Image.create(48, 48, false, Image.FORMAT_RGBA8)
     var rng := RandomNumberGenerator.new()
     rng.seed = int(abs(hash(key))) + 20030717
