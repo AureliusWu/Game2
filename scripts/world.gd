@@ -156,6 +156,7 @@ func _build_street() -> void:
         _lamp_post(Vector3(-4.0, 0.0, z))
     _lamp_post(Vector3(4.0, 0.0, -13))
     _spot("poster", "查看寻人启事", Vector3(-1.3, 1.3, 12.0))
+    _spot("public_phone", "查看公用电话", Vector3(4.1, 1.45, 16.0))
     _spot("enter_shop", "进入小卖部", Vector3(-4.0, 1.2, 4.0))
     _spot("enter_radio", "进入广播站", Vector3(4.0, 1.2, -8.0))
     _spot("enter_shrine", "进入祠堂", Vector3(0, 1.2, -26.6))
