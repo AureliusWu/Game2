@@ -4,6 +4,7 @@ const WorldBuilder = preload("res://scripts/world.gd")
 const Ambience = preload("res://scripts/ambience.gd")
 const Interviews = preload("res://scripts/interviews.gd")
 const Interaction = preload("res://scripts/interaction.gd")
+const Screenshots = preload("res://scripts/screenshots.gd")
 const EVIDENCE := {
     "poster": {
         "name": "寻人启事",
@@ -74,6 +75,10 @@ var help_label: Label
 var objective_label: Label
 var prompt_label: Label
 var crosshair: Label
+var photo_notice: Label
+var photo_busy: bool = false
+var photo_notice_end: int = 0
+var witness_panel_mode: bool = false
 var modal: PanelContainer
 
 func _ready() -> void:
@@ -131,10 +136,21 @@ func _create_ui() -> void:
     hud.add_child(title_label)
     help_label = Label.new()
     help_label.position = Vector2(24, 58)
-    help_label.text = "WASD 移动 · 鼠标观察 · Shift 快走 · E/F 调查 · J 笔记 · Esc 退出界面"
+    help_label.text = "WASD 移动 · 鼠标观察 · Shift 快走 · E/F 调查 · J 笔记 · F12 截图 · Esc"
     help_label.add_theme_font_size_override("font_size", 16)
     help_label.add_theme_color_override("font_color", Color(0.82, 0.82, 0.77))
     hud.add_child(help_label)
+    photo_notice = Label.new()
+    photo_notice.anchor_top = 1.0
+    photo_notice.anchor_bottom = 1.0
+    photo_notice.offset_left = 24.0
+    photo_notice.offset_right = 940.0
+    photo_notice.offset_top = -64.0
+    photo_notice.offset_bottom = -22.0
+    photo_notice.add_theme_font_size_override("font_size", 16)
+    photo_notice.add_theme_color_override("font_color", Color(0.94, 0.86, 0.67))
+    photo_notice.visible = false
+    hud.add_child(photo_notice)
     objective_label = Label.new()
     objective_label.anchor_left = 1.0
     objective_label.anchor_right = 1.0
@@ -189,12 +205,21 @@ func _layout_modal() -> void:
     var view: Vector2 = get_viewport().get_visible_rect().size
     var half_width: float = minf(350.0, maxf(160.0, (view.x - 36.0) * 0.5))
     var half_height: float = minf(240.0, maxf(130.0, (view.y - 36.0) * 0.5))
+    modal.anchor_left = 0.5
+    modal.anchor_right = 0.5
     modal.offset_left = -half_width
     modal.offset_right = half_width
+    if witness_panel_mode and view.x >= 1100.0:
+        modal.anchor_left = 1.0
+        modal.anchor_right = 1.0
+        modal.offset_left = -minf(620.0, view.x * 0.44)
+        modal.offset_right = -22.0
     modal.offset_top = -half_height
     modal.offset_bottom = half_height
 
-func _begin_modal(heading: String) -> VBoxContainer:
+func _begin_modal(heading: String, witness_panel: bool = false) -> VBoxContainer:
+    witness_panel_mode = witness_panel
+    _layout_modal()
     for old in modal.get_children():
         old.queue_free()
     var margin := MarginContainer.new()
@@ -320,6 +345,8 @@ func _update_location_label() -> void:
         title_label.text += "  ·  第一案已结"
 
 func _process(_delta: float) -> void:
+    if photo_notice != null and photo_notice.visible and Time.get_ticks_msec() >= photo_notice_end:
+        photo_notice.visible = false
     if modal.visible:
         prompt_label.text = ""
         focus_id = ""
@@ -335,7 +362,10 @@ func _process(_delta: float) -> void:
 
 func _input(event: InputEvent) -> void:
     if event is InputEventKey and event.pressed and not event.echo:
-        if event.keycode == KEY_ESCAPE:
+        if event.keycode == KEY_F12:
+            _capture_photo()
+            get_viewport().set_input_as_handled()
+        elif event.keycode == KEY_ESCAPE:
             if modal.visible:
                 _close_modal()
             elif Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -352,6 +382,22 @@ func _input(event: InputEvent) -> void:
     elif event is InputEventMouseButton and event.pressed and not modal.visible:
         if Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
             Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+func _capture_photo() -> void:
+    if photo_busy:
+        return
+    photo_busy = true
+    await RenderingServer.frame_post_draw
+    var frame: Image = get_viewport().get_texture().get_image()
+    var path: String = Screenshots.store(frame, current_zone,
+        Time.get_datetime_string_from_system(), Time.get_ticks_msec())
+    photo_busy = false
+    photo_notice.visible = true
+    photo_notice_end = Time.get_ticks_msec() + 4500
+    if path == "":
+        photo_notice.text = "截图保存失败：请检查用户目录写入权限"
+    else:
+        photo_notice.text = "截图已保存：" + path
 
 func _interact(id: String) -> void:
     match id:
@@ -389,7 +435,7 @@ func _interview(person: String) -> void:
         return
     _set_witness_speaking(person)
     var witness: Dictionary = Interviews.PEOPLE[person]
-    var stack := _begin_modal("问话 · " + str(witness["name"]))
+    var stack := _begin_modal("问话 · " + str(witness["name"]), true)
     _add_text(stack, str(witness["intro"]), 155.0)
     for topic in witness["topics"]:
         var id: String = str(topic["id"])
@@ -409,7 +455,7 @@ func _interview_topic(person: String, topic_id: String) -> void:
             collected[clue] = true
             _save()
         var suffix: String = "\n\n（新证词已收入调查笔记）" if clue != "" else ""
-        var stack := _begin_modal(str(witness["name"]))
+        var stack := _begin_modal(str(witness["name"]), true)
         _add_text(stack, str(topic["text"]) + suffix, 240.0)
         _add_button(stack, "继续问话", Callable(self, "_interview").bind(person))
         _add_button(stack, "结束问话", Callable(self, "_close_modal"))
