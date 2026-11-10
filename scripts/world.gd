@@ -97,10 +97,31 @@ func _spot(id: String, name: String, pos: Vector3) -> void:
 func _building(pos: Vector3, size: Vector3, wall: Color, roof: Color) -> void:
     _box(pos, size, wall, true, false, "plaster")
     _box(pos + Vector3(0, size.y * 0.5 + 0.15, 0), Vector3(size.x + 0.7, 0.30, size.z + 0.7), roof, false, false, "tile")
-    for i in range(2):
-        var offset: float = -size.z * 0.24 + float(i) * size.z * 0.48
-        _box(pos + Vector3(0, 0.8, offset), Vector3(0.035, 1.15, 1.25), Color(0.22, 0.33, 0.34))
-        _box(pos + Vector3(0.04, 0.8, offset), Vector3(0.05, 0.06, 1.30), Color(0.67, 0.65, 0.53))
+    # Modular street-facing windows. Old code placed these inside building solids.
+    var near_street_x: float = pos.x + (size.x * 0.5 + 0.07) * (1.0 if pos.x < 0.0 else -1.0)
+    var levels: int = maxi(1, int(size.y / 3.1))
+    for floor_index in range(levels):
+        var y: float = 1.75 + float(floor_index) * 2.65
+        if y + 0.8 > size.y:
+            continue
+        for i in range(2):
+            var offset: float = -size.z * 0.24 + float(i) * size.z * 0.48
+            var z: float = pos.z + offset
+            _box(Vector3(near_street_x, y, z), Vector3(0.08, 1.3, 1.25),
+                Color(0.23, 0.31, 0.33), false, false, "metal")
+            _box(Vector3(near_street_x + 0.02, y, z), Vector3(0.10, 1.36, 0.075),
+                Color(0.69, 0.64, 0.50), false, false, "wood")
+            _box(Vector3(near_street_x + 0.02, y, z - 0.64), Vector3(0.10, 1.36, 0.075),
+                Color(0.69, 0.64, 0.50), false, false, "wood")
+            _box(Vector3(near_street_x + 0.09, y - 0.73, z),
+                Vector3(0.32, 0.10, 1.50), Color(0.55, 0.51, 0.42), false, false, "concrete")
+            if floor_index > 0:
+                _box(Vector3(near_street_x + 0.12, y - 0.85, z),
+                    Vector3(0.25, 0.12, 1.85), Color(0.50, 0.46, 0.38), false, false, "concrete")
+    # A few restrained facade bands break up single-block silhouettes.
+    if absf(pos.x) > 1.0:
+        _box(Vector3(near_street_x, size.y * 0.5, pos.z),
+            Vector3(0.12, 0.10, size.z * 0.92), Color(0.55, 0.48, 0.40), false, false, "concrete")
 
 func _lamp_post(pos: Vector3) -> void:
     _cylinder(pos + Vector3(0, 2.05, 0), 0.065, 4.1, Color(0.22, 0.25, 0.23))
