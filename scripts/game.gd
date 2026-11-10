@@ -325,9 +325,11 @@ func _set_mood(unstable: bool) -> void:
     if atmosphere != null and atmosphere.environment != null:
         atmosphere.environment.background_color = Color(0.31, 0.37, 0.43) if unstable else Color(0.36, 0.43, 0.46)
         atmosphere.environment.fog_light_color = Color(0.37, 0.40, 0.45) if unstable else Color(0.46, 0.45, 0.42)
-        atmosphere.environment.fog_density = 0.016 if unstable else 0.009
+        atmosphere.environment.fog_density = 0.006 if unstable and current_zone == "radio" else (0.003 if current_zone == "radio" else (0.016 if unstable else 0.009))
+        # Restrained indoor bounce lets the desk practicals establish visual hierarchy.
+        atmosphere.environment.ambient_light_energy = 0.36 if current_zone == "radio" else 0.55
     if sunlight != null:
-        sunlight.light_energy = 0.49 if unstable else 0.9
+        sunlight.light_energy = 0.12 if current_zone == "radio" else (0.49 if unstable else 0.9)
 
 func _update_objective() -> void:
     if objective_label == null:
