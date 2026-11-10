@@ -1,0 +1,73 @@
+name: Game2 real-render screenshots
+
+on:
+  pull_request:
+    paths:
+      - 'tests/capture_visuals.gd'
+      - '.github/workflows/visual-capture.yml'
+      - 'scripts/**'
+      - 'scenes/**'
+      - 'project.godot'
+  push:
+    branches: [main]
+    paths:
+      - 'tests/capture_visuals.gd'
+      - '.github/workflows/visual-capture.yml'
+      - 'scripts/**'
+      - 'scenes/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install X11 / software GL dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri libgl1-mesa-glx mesa-utils
+          command -v xvfb-run
+      - name: Download official Godot 4.7.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 -o /tmp/godot.zip \
+            https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot-visual
+          chmod +x /tmp/godot-visual/Godot_v4.7.2-stable_linux.x86_64
+          echo "/tmp/godot-visual" >> "$GITHUB_PATH"
+      - name: Import resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          Godot_v4.7.2-stable_linux.x86_64 --headless --editor --path . --import 2>&1 | tee /tmp/import.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/import.log; then exit 1; fi
+      - name: Run actual in-engine X11 screenshots
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          GALLIUM_DRIVER: llvmpipe
+        run: |
+          set -euo pipefail
+          mkdir -p build/visual-captures
+          timeout 150s xvfb-run -a -s '-screen 0 1280x720x24' \
+            Godot_v4.7.2-stable_linux.x86_64 --path . \
+            --rendering-method gl_compatibility --resolution 1280x720 \
+            --script res://tests/capture_visuals.gd 2>&1 | tee /tmp/visual.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:|VISUAL_CAPTURE_FAILED:' /tmp/visual.log; then exit 1; fi
+          grep -q 'VISUAL_CAPTURE_OK: 7' /tmp/visual.log
+          test "$(find build/visual-captures -maxdepth 1 -name '*.png' | wc -l)" -eq 7
+          for png in build/visual-captures/*.png; do test -s "$png"; done
+      - name: Upload actual game images
+        uses: actions/upload-artifact@v4
+        with:
+          name: Game2-Actual-Render-Screenshots
+          path: build/visual-captures/*.png
+          retention-days: 14
+          if-no-files-found: error
