@@ -28,6 +28,13 @@ func _capture_all() -> void:
     if not await _snap(game, player, camera, "01_street", "street",
         Vector3(0.0, 1.01, 17.0), Vector3(-1.0, 1.65, 2.0)):
         return
+    # Same-town alternate framings, before the tape anomaly.
+    if not await _snap(game, player, camera, "08_shopfront", "street",
+        Vector3(-0.75, 1.01, 10.4), Vector3(-5.0, 2.2, 4.3)):
+        return
+    if not await _snap(game, player, camera, "09_radio_exterior", "street",
+        Vector3(1.0, 1.01, -1.7), Vector3(5.0, 2.7, -8.0)):
+        return
     if not await _snap(game, player, camera, "02_shop", "shop",
         Vector3(-0.5, 1.01, 3.0), Vector3(-3.6, 1.55, -0.8)):
         return
@@ -57,7 +64,7 @@ func _capture_all() -> void:
     if not await _snap(game, player, camera, "07_haunted_street", "street",
         Vector3(0.0, 1.01, 17.0), Vector3(-1.0, 1.65, 2.0)):
         return
-    print("VISUAL_CAPTURE_OK: 7 real Godot rendered frames")
+    print("VISUAL_CAPTURE_OK: 9 real Godot rendered frames")
     quit(0)
 
 func _snap(game: Node3D, player: CharacterBody3D, camera: Camera3D,
