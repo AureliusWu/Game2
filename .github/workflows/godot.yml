@@ -25,12 +25,35 @@ jobs:
           chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
           echo "$GITHUB_WORKSPACE/.godot-bin" >> "$GITHUB_PATH"
           .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
-      - name: Import resources and parse scripts
-        run: Godot_v4.7.2-stable_linux.x86_64 --headless --editor --path . --import
-      - name: Scene smoke test
-        run: Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/smoke.gd
-      - name: Case 01 logic test
-        run: Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/case01.gd
+      - name: Import and validate scripts (strict errors)
+        shell: bash
+        run: |
+          set -euo pipefail
+          Godot_v4.7.2-stable_linux.x86_64 --headless --editor --path . --import 2>&1 | tee /tmp/godot-import.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-import.log; then
+            echo "Godot import emitted errors" >&2
+            exit 1
+          fi
+      - name: Scene smoke test (strict)
+        shell: bash
+        run: |
+          set -euo pipefail
+          Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/smoke.gd 2>&1 | tee /tmp/godot-smoke.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-smoke.log; then
+            echo "Godot smoke emitted errors" >&2
+            exit 1
+          fi
+          grep -q 'SMOKE_OK:' /tmp/godot-smoke.log
+      - name: Case 01 logic test (strict)
+        shell: bash
+        run: |
+          set -euo pipefail
+          Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/case01.gd 2>&1 | tee /tmp/godot-case01.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-case01.log; then
+            echo "Godot case test emitted errors" >&2
+            exit 1
+          fi
+          grep -q 'CASE01_OK:' /tmp/godot-case01.log
 
   windows-build:
     needs: [smoke]
@@ -55,9 +78,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          Godot_v4.7.2-stable_linux.x86_64 --headless --editor --path . --import
+          Godot_v4.7.2-stable_linux.x86_64 --headless --editor --path . --import 2>&1 | tee /tmp/build-import.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/build-import.log; then
+            exit 1
+          fi
           mkdir -p build
-          Godot_v4.7.2-stable_linux.x86_64 --headless --path . --export-release "Windows Desktop" build/Game2.exe
+          Godot_v4.7.2-stable_linux.x86_64 --headless --path . --export-release "Windows Desktop" build/Game2.exe 2>&1 | tee /tmp/build-export.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/build-export.log; then
+            exit 1
+          fi
           test -s build/Game2.exe
       - uses: actions/upload-artifact@v4
         with:
