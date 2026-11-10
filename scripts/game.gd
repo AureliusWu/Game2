@@ -5,6 +5,7 @@ const Ambience = preload("res://scripts/ambience.gd")
 const Interviews = preload("res://scripts/interviews.gd")
 const Interaction = preload("res://scripts/interaction.gd")
 const Screenshots = preload("res://scripts/screenshots.gd")
+const TapeSequence = preload("res://scripts/tape_sequence.gd")
 const EVIDENCE := {
     "poster": {
         "name": "寻人启事",
@@ -79,6 +80,8 @@ var photo_notice: Label
 var photo_busy: bool = false
 var photo_notice_end: int = 0
 var witness_panel_mode: bool = false
+var tape_active: bool = false
+var tape_step: int = -1
 var modal: PanelContainer
 
 func _ready() -> void:
@@ -273,6 +276,11 @@ func _message(title: String, content: String) -> void:
     _add_button(stack, "继续", Callable(self, "_close_modal"))
 
 func _close_modal() -> void:
+    if tape_active:
+        tape_active = false
+        tape_step = -1
+        ambience.stop_tape()
+        _set_mood(collected.has("tape"))
     _set_witness_speaking("")
     modal.visible = false
     player.can_move = true
@@ -280,6 +288,8 @@ func _close_modal() -> void:
 
 func _go_to(zone: String, initial: bool = false) -> void:
     active_witness = ""
+    tape_active = false
+    tape_step = -1
     var previous: String = current_zone
     current_zone = zone
     world.haunted = collected.has("tape")
@@ -409,6 +419,78 @@ func _interact(id: String) -> void:
         "public_phone": _inspect_phone()
         _: _investigate(id)
 
+func _tape_intro() -> void:
+    tape_active = false
+    tape_step = -1
+    var stack := _begin_modal("21:47 · 内线监听磁带")
+    var opening: String = "桌上躺着一盘褪色的录音带。你摸到一行日期：2003.7.17。\n\n" + \
+        "陈站长说：『只有值班室听得到。全镇喇叭是后来才开的。』\n\n" + \
+        "磁带分为四段，你可逐段监听，或跳过演出直接记下时间线。"
+    _add_text(stack, opening, 215.0)
+    _add_button(stack, "按下播放键", Callable(self, "_tape_start"))
+    _add_button(stack, "跳过演出 · 记录内容", Callable(self, "_tape_complete"))
+    _add_button(stack, "暂不播放", Callable(self, "_close_modal"))
+
+func _tape_start() -> void:
+    tape_active = true
+    tape_step = 0
+    _show_tape_beat()
+
+func _show_tape_beat() -> void:
+    if not tape_active:
+        return
+    var beat: Dictionary = TapeSequence.beat(tape_step)
+    if beat.is_empty():
+        return
+    var stack := _begin_modal("监听录音 · " + str(beat["clock"]))
+    _add_text(stack, str(beat["marker"]) + "\n\n" + str(beat["scene"]) + \
+        "\n\n" + str(beat["caption"]), 245.0)
+    var wave := HBoxContainer.new()
+    wave.add_theme_constant_override("separation", 3)
+    stack.add_child(wave)
+    for i in range(30):
+        var bar := ColorRect.new()
+        bar.color = Color(0.73, 0.65, 0.45) if tape_step < 2 else Color(0.49, 0.73, 0.69)
+        bar.custom_minimum_size = Vector2(5.0, 6.0 + float((i * 17 + tape_step * 11) % 14) * 2.0)
+        bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+        wave.add_child(bar)
+    var stage_label: String = "监听进度  " + str(tape_step + 1) + " / " + str(TapeSequence.count())
+    _add_text(stack, stage_label, 32.0)
+    _add_button(stack, "记录线索并结束" if tape_step == TapeSequence.count() - 1 \
+        else "继续监听", Callable(self, "_tape_next"))
+    _add_button(stack, "停止播放 · 暂不记录", Callable(self, "_close_modal"))
+    if tape_step >= 2:
+        _set_mood(true)
+    ambience.play_tape_stage(TapeSequence.cue(tape_step))
+
+func _tape_next() -> void:
+    if not tape_active:
+        return
+    if tape_step < TapeSequence.count() - 1:
+        tape_step += 1
+        _show_tape_beat()
+    else:
+        _tape_complete()
+
+func _tape_complete() -> void:
+    var was_new: bool = not collected.has("tape")
+    _close_modal()
+    if was_new:
+        collected["tape"] = true
+        _save()
+        _update_objective()
+        world.haunted = true
+        world.build_zone(current_zone)
+        _set_mood(true)
+        ambience.play_radio_anomaly()
+    var message: String = str(EVIDENCE["tape"]["text"])
+    message += "\n\n21:47 是广播站的内线监听，不是对全镇的公开播报。"
+    if not was_new:
+        message += "\n\n（已收录至调查笔记 · 允许复听）"
+    elif _ready_to_deduce():
+        message += "\n\n四条关键线索已齐，按 J 打开笔记进行推理。"
+    _message("磁带归档 · 21:47", message)
+
 func _inspect_phone() -> void:
     if not collected.has("tape"):
         _message("镇中心 · 公用电话", "电话听筒冰凉，没有拨号音。机身上写着：『九月起撤机』。")
@@ -462,6 +544,9 @@ func _interview_topic(person: String, topic_id: String) -> void:
         return
 
 func _investigate(id: String) -> void:
+    if id == "tape":
+        _tape_intro()
+        return
     if not EVIDENCE.has(id):
         return
     var first_time: bool = not collected.has(id)
