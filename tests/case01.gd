@@ -1,5 +1,6 @@
 extends SceneTree
 const Interaction = preload("res://scripts/interaction.gd")
+const Screenshots = preload("res://scripts/screenshots.gd")
 ## Deterministic headless checks for the shipped case logic. Not a replacement for desktop play QA.
 
 func _initialize() -> void:
@@ -52,12 +53,22 @@ func _check(game: Node) -> void:
         _fail("Station chief lacks independent animation pivots")
         return
     game.call("_interview", "npc_radio")
+    if not bool(game.get("witness_panel_mode")):
+        _fail("Witness conversation panel did not activate side framing")
+        return
+    var modal: PanelContainer = game.get("modal") as PanelContainer
+    if game.get_viewport().get_visible_rect().size.x >= 1100.0 and modal.anchor_left != 1.0:
+        _fail("Wide screen witness panel should leave character visible")
+        return
     if not bool(radio_character.get("speaking")):
         _fail("Dialogue did not activate witness performance")
         return
     game.call("_close_modal")
     if bool(radio_character.get("speaking")):
         _fail("Witness performance continued after dialogue")
+        return
+    if Screenshots.filename("radio", "2026-11-10T17:14:00", 42) != "radio_2026-11-10_17-14-00_42.png":
+        _fail("Screenshot filename format changed")
         return
     # Verify environment art nodes exist before and after the tape anomaly.
     game.call("_go_to", "shop")
@@ -165,5 +176,5 @@ func _check(game: Node) -> void:
     if not FileAccess.file_exists("user://case01-save.json"):
         _fail("Completion did not save")
         return
-    print("CASE01_OK: areas, gaze, post-tape events, interview notes, deduction, save")
+    print("CASE01_OK: screenshot names, witness-visible dialogue,  areas, gaze, post-tape events, interview notes, deduction, save")
     quit(0)
