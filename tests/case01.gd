@@ -1,5 +1,6 @@
 extends SceneTree
 const Interaction = preload("res://scripts/interaction.gd")
+const Screenshots = preload("res://scripts/screenshots.gd")
 ## Deterministic headless checks for the shipped case logic. Not a replacement for desktop play QA.
 
 func _initialize() -> void:
@@ -43,6 +44,37 @@ func _check(game: Node) -> void:
     var radio_character: Node = world.get_node_or_null("Witness_npc_radio")
     if radio_character == null or radio_character.get_child_count() < 12:
         _fail("Station chief character mesh missing or incomplete")
+        return
+    # Motion is deterministic under a manual tick and reacts to questioning.
+    game.call("_go_to", "shop")
+    shop_character = world.get_node_or_null("Witness_npc_shop")
+    var shop_head := shop_character.get_node_or_null("HeadPivot") as Node3D
+    var shop_motion: Node = shop_character.get_node_or_null("Motion")
+    if shop_head == null or shop_motion == null:
+        _fail("Missing animation pivots on shopkeeper")
+        return
+    world.call("react_witness", "npc_shop", 2.0)
+    shop_motion.call("advance", 0.1)
+    if absf(shop_head.rotation.x) < 0.02:
+        _fail("Speaking animation did not move shopkeeper head")
+        return
+    shop_motion.call("advance", 3.0)
+    if float(shop_motion.get("speaking_time")) > 0.0:
+        _fail("Witness never returns to idle")
+        return
+    game.call("_go_to", "radio")
+    radio_character = world.get_node_or_null("Witness_npc_radio")
+    var radio_motion: Node = radio_character.get_node_or_null("Motion")
+    if radio_motion == null or radio_character.get_node_or_null("RightArm") == null:
+        _fail("Station chief lacks gesture rig")
+        return
+    world.call("react_witness", "npc_radio", 2.0)
+    radio_motion.call("advance", 0.2)
+    if float(radio_motion.get("speaking_time")) <= 0.0:
+        _fail("Questioning station chief did not start performance")
+        return
+    if Screenshots.filename("radio", "2026-11-10T17:14:00", 42) != "radio_2026-11-10_17-14-00_42.png":
+        _fail("Screenshot filename format is not stable")
         return
     # Verify environment art nodes exist before and after the tape anomaly.
     game.call("_go_to", "shop")
@@ -150,5 +182,5 @@ func _check(game: Node) -> void:
     if not FileAccess.file_exists("user://case01-save.json"):
         _fail("Completion did not save")
         return
-    print("CASE01_OK: areas, gaze, post-tape events, interview notes, deduction, save")
+    print("CASE01_OK: areas, gaze, witness motions, PNG naming, post-tape events, interviews, deduction, save")
     quit(0)
