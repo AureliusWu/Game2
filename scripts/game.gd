@@ -1,6 +1,7 @@
 extends Node3D
 ## Case 01: 广播里的人 — investigation, dialogue, deduction. No combat.
 const WorldBuilder = preload("res://scripts/world.gd")
+const Ambience = preload("res://scripts/ambience.gd")
 const EVIDENCE := {
     "poster": {
         "name": "寻人启事",
@@ -21,6 +22,18 @@ const EVIDENCE := {
     "ritual": {
         "name": "封声残页",
         "text": "地方仪式的残本记载：夏夜封声，不呼全名，不以铜喉代人传名。后有批注：『它记下声，却不识人。』"
+    },
+    "calendar": {
+        "name": "小卖部旧日历",
+        "text": "撕到 2003 年七月的挂历还在墙上，背面写着：『小禾说她已经回家了，不要再找她。』墨迹看起来不像二十多年前留下的。"
+    },
+    "broadcast_notice": {
+        "name": "广播站停播通知",
+        "text": "镇广播站在 2003 年 7 月 18 日接到停播通知：『午夜起禁止寻人广播，禁止连续三次宣读同一姓名。』通知上的签字无法辨认。"
+    },
+    "tablet": {
+        "name": "无名牌位",
+        "text": "祠堂正中的牌位没有姓氏，只有两个深浅不同的刻痕。香灰沿桌边排成整齐的线，像有人在数经过这里的声音。"
     }
 }
 const REQUIRED := ["poster", "ledger", "log", "tape"]
@@ -29,6 +42,7 @@ const REQUIRED := ["poster", "ledger", "log", "tape"]
 @onready var eye: Camera3D = $Player/Camera3D
 
 var world
+var ambience
 var current_zone: String = "street"
 var collected: Dictionary = {}
 var finished: bool = false
@@ -48,6 +62,9 @@ func _ready() -> void:
     world = WorldBuilder.new()
     world.name = "World"
     add_child(world)
+    ambience = Ambience.new()
+    ambience.name = "Ambience"
+    add_child(ambience)
     _create_ui()
     _go_to("street", true)
     if finished:
@@ -59,6 +76,7 @@ func _ready() -> void:
 
 func _setup_lighting() -> void:
     var environment := WorldEnvironment.new()
+    environment.name = "WorldEnvironment"
     var env := Environment.new()
     env.background_mode = Environment.BG_COLOR
     env.background_color = Color(0.36, 0.43, 0.46)
@@ -71,6 +89,7 @@ func _setup_lighting() -> void:
     environment.environment = env
     add_child(environment)
     var sunlight := DirectionalLight3D.new()
+    sunlight.name = "Sunlight"
     sunlight.rotation_degrees = Vector3(-45.0, -24.0, 0.0)
     sunlight.light_color = Color(1.0, 0.78, 0.56)
     sunlight.light_energy = 0.9
@@ -186,7 +205,10 @@ func _close_modal() -> void:
 func _go_to(zone: String, initial: bool = false) -> void:
     var previous: String = current_zone
     current_zone = zone
+    world.haunted = collected.has("tape")
     world.build_zone(zone)
+    _set_mood(world.haunted)
+    ambience.play_zone(zone)
     match zone:
         "street":
             var spawn := Vector3(0, 1.01, 18)
@@ -202,6 +224,16 @@ func _go_to(zone: String, initial: bool = false) -> void:
     player.rotation.y = 0
     eye.rotation.x = 0
     _update_location_label()
+
+func _set_mood(unstable: bool) -> void:
+    var atmosphere := get_node_or_null("WorldEnvironment") as WorldEnvironment
+    var sunlight := get_node_or_null("Sunlight") as DirectionalLight3D
+    if atmosphere != null and atmosphere.environment != null:
+        atmosphere.environment.background_color = Color(0.31, 0.37, 0.43) if unstable else Color(0.36, 0.43, 0.46)
+        atmosphere.environment.fog_light_color = Color(0.37, 0.40, 0.45) if unstable else Color(0.46, 0.45, 0.42)
+        atmosphere.environment.fog_density = 0.016 if unstable else 0.009
+    if sunlight != null:
+        sunlight.light_energy = 0.49 if unstable else 0.9
 
 func _update_location_label() -> void:
     var names := {"street": "怀声镇 · 镇中心", "shop": "吉祥小卖部", "radio": "旧广播站", "shrine": "怀声祠"}
@@ -269,6 +301,11 @@ func _investigate(id: String) -> void:
     collected[id] = true
     if first_time:
         _save()
+    if first_time and id == "tape":
+        world.haunted = true
+        world.build_zone(current_zone)
+        _set_mood(true)
+        ambience.play_radio_anomaly()
     var data: Dictionary = EVIDENCE[id]
     var message: String = data["text"]
     if not first_time:
@@ -332,6 +369,7 @@ func _answer(selection: String) -> void:
             "请重新比对录音时间与广播时间。要分清『第一次记录到声音』和『把声音传播给其他人』。")
         return
     finished = true
+    ambience.play_last_call()
     _save()
     _update_location_label()
     _message("第一案 · 尾声",
