@@ -2,6 +2,7 @@ extends RefCounted
 ## A deliberately art-directed 2003 county broadcast room, built from original geometry.
 ## Independent production slice: replace modular procedural meshes with authored GLB/PBR assets later.
 const Finish = preload("res://scripts/radio_finishes.gd")
+const Landmarks = preload("res://scripts/landmarks.gd")
 
 static func build(scene: Node3D, haunted: bool) -> void:
     var root := Node3D.new()
@@ -97,8 +98,8 @@ static func _wall_story(root: Node3D, haunted: bool) -> void:
         Color(0.25, 0.30, 0.26), "wood")
     _box(root, Vector3(4.70, 2.48, -5.61), Vector3(1.07, 1.32, 0.035),
         Color(0.72, 0.67, 0.51), "paper")
-    _text(root, "停 播 通 知\n2003.7.18", Vector3(4.70, 2.48, -5.51), 23,
-        Color(0.28, 0.31, 0.29))
+    _text(root, "停 播 通 知\n2003.7.18", Landmarks.RADIO_NOTICE, 23,
+        Color(0.28, 0.31, 0.29), true)
     # Physical clock with a face and brass hands, not a large billboard.
     _disk(root, Vector3(3.92, 3.28, -5.60), 0.29, 0.07, Color(0.28, 0.29, 0.26), "wood")
     _disk(root, Vector3(3.92, 3.28, -5.52), 0.23, 0.025, Color(0.83, 0.77, 0.60), "paper")
@@ -147,7 +148,7 @@ static func _control_desk(root: Node3D, haunted: bool) -> void:
     for i in range(5):
         _box(root, Vector3(-1.10 + float(i) * 0.29, 1.453, -1.89),
             Vector3(0.20, 0.01, 0.032), Color(0.61, 0.65, 0.58), "steel")
-    _box(root, Vector3(-0.52, 1.458, -1.67), Vector3(0.98, 0.015, 0.38),
+    _box(root, Landmarks.RADIO_LOG + Vector3(0, -0.022, 0), Vector3(0.98, 0.015, 0.38),
         Color(0.84, 0.75, 0.56), "paper")
     _text(root, "值班记录", Vector3(-0.51, 1.55, -1.45), 19,
         Color(0.32, 0.35, 0.31))
@@ -215,7 +216,7 @@ static func _equipment(root: Node3D) -> void:
     _box(root, Vector3(1.86, 1.63, -2.18), Vector3(0.72, 0.15, 0.07),
         Color(0.21, 0.23, 0.22), "bakelite")
     for i in range(5):
-        _box(root, Vector3(1.57 + float(i) * 0.145, 1.61, -2.12),
+        _box(root, Landmarks.RADIO_TAPE + Vector3(-0.29 + float(i) * 0.145, -0.04, -0.02),
             Vector3(0.09, 0.065, 0.025),
             Color(0.77, 0.59, 0.37) if i == 2 else Color(0.70, 0.72, 0.67), "bakelite")
     # Full-height side rack: cassette binders, analogue meters, original paper labels.
@@ -340,14 +341,16 @@ static func _sphere(root: Node3D, at: Vector3, radius: float,
     root.add_child(node)
 
 static func _text(root: Node3D, content: String, at: Vector3,
-    font_size: int, color: Color) -> void:
+    font_size: int, color: Color, mounted: bool = false) -> void:
     var text_node := Label3D.new()
     text_node.text = content
     text_node.position = at
     text_node.font_size = font_size
     text_node.pixel_size = 0.004
     text_node.modulate = color
-    text_node.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+    # A wall notice must remain on its paper plane. Billboarding rotated half
+    # the text into the wall when approached from the side.
+    text_node.billboard = BaseMaterial3D.BILLBOARD_DISABLED if mounted else BaseMaterial3D.BILLBOARD_ENABLED
     text_node.outline_size = 2
     root.add_child(text_node)
 

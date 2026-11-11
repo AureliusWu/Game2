@@ -3,6 +3,7 @@ const Interaction = preload("res://scripts/interaction.gd")
 const Screenshots = preload("res://scripts/screenshots.gd")
 const RadioFinishes = preload("res://scripts/radio_finishes.gd")
 const TapeSequence = preload("res://scripts/tape_sequence.gd")
+const TEST_SAVE := "user://qa/case01-test-save.json"
 ## Deterministic headless checks for the shipped case logic. Not a replacement for desktop play QA.
 
 func _initialize() -> void:
@@ -12,6 +13,8 @@ func _initialize() -> void:
         quit(1)
         return
     var game: Node = scene.instantiate()
+    game.set("save_path", TEST_SAVE)
+    DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
     get_root().add_child.call_deferred(game)
     call_deferred("_check", game)
 
@@ -87,7 +90,8 @@ func _check(game: Node) -> void:
         return
     # Verify environment art nodes exist before and after the tape anomaly.
     game.call("_go_to", "shop")
-    if world.get_child_count() < 35:
+    var shop_set: Node = world.get_node_or_null("ShopSet")
+    if shop_set == null or shop_set.get_node_or_null("OpenLedger") == null:
         _fail("Shop environment dressing unexpectedly missing")
         return
     game.call("_go_to", "street")
@@ -215,7 +219,7 @@ func _check(game: Node) -> void:
         _fail("Witness statements alone cannot unlock timeline deduction")
         return
     game.call("_save")
-    var save_data: Variant = JSON.parse_string(FileAccess.get_file_as_string("user://case01-save.json"))
+    var save_data: Variant = JSON.parse_string(FileAccess.get_file_as_string(TEST_SAVE))
     if not (save_data is Dictionary):
         _fail("Save data malformed")
         return
@@ -243,8 +247,24 @@ func _check(game: Node) -> void:
     if not game.get("finished"):
         _fail("Correct answer failed to complete case")
         return
-    if not FileAccess.file_exists("user://case01-save.json"):
+    if not FileAccess.file_exists(TEST_SAVE):
         _fail("Completion did not save")
         return
+    game.set("collected", {})
+    game.set("finished", false)
+    game.call("_load_save")
+    if not bool(game.get("finished")) or not game.call("_ready_to_deduce"):
+        _fail("Existing evidence-ID saves no longer resume correctly")
+        return
+    var invalid_save := FileAccess.open(TEST_SAVE, FileAccess.WRITE)
+    invalid_save.store_string(JSON.stringify({"found": ["poster", "unknown", 42], "finished": "true"}))
+    invalid_save.close()
+    game.set("collected", {})
+    game.set("finished", false)
+    game.call("_load_save")
+    if bool(game.get("finished")) or (game.get("collected") as Dictionary).size() != 1:
+        _fail("Malformed progress falsely completed the case")
+        return
     print("CASE01_OK: radio slice materials/lighting,  gated tape playback/cancel/replay/audio, witness, clues, deduction, save")
+    DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
     quit(0)

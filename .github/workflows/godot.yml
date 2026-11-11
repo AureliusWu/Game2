@@ -54,6 +54,15 @@ jobs:
             exit 1
           fi
           grep -q 'CASE01_OK:' /tmp/godot-case01.log
+      - name: Walkable investigation and compact UI regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 120s Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/exploration.gd 2>&1 | tee /tmp/godot-exploration.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-exploration.log; then
+            exit 1
+          fi
+          grep -q 'EXPLORATION_OK:' /tmp/godot-exploration.log
 
   windows-build:
     needs: [smoke]

@@ -2,6 +2,7 @@ extends RefCounted
 ## First proper exterior visual slice for Huai Sheng (fictional 2003 county town).
 ## Resource-free original geometry and code-painted surface materials. Transitional art.
 const Finish = preload("res://scripts/radio_finishes.gd")
+const Landmarks = preload("res://scripts/landmarks.gd")
 const GUTTER := Color(0.17, 0.23, 0.24)
 const GREEN := Color(0.18, 0.31, 0.29)
 const BROWN := Color(0.40, 0.30, 0.23)
@@ -20,6 +21,7 @@ static func build(scene: Node3D, haunted: bool) -> void:
     _utility(root)
     _shrine_gateway(root)
     _street_lighting(root, haunted)
+    _boundaries(root)
     if haunted:
         # Sibling makes the one-shot apparition independently testable without
         # contaminating the previous era's facade meshes or hotspot positions.
@@ -289,7 +291,7 @@ static func _shrine_gateway(root: Node3D) -> void:
     # Narrowing street perspective, old masonry entry and timber gate on axis.
     _box(root, Vector3(0, 2.90, -32.2), Vector3(10.8, 5.80, 1.28),
         Color(0.42, 0.41, 0.35), "plaster", true)
-    _box(root, Vector3(0, 1.45, -31.46), Vector3(2.77, 2.89, 0.09),
+    _box(root, Landmarks.SHRINE_DOOR + Vector3(0, 0, -0.11), Vector3(2.77, 2.89, 0.09),
         Color(0.22, 0.17, 0.15), "wood")
     for x in [-1.54, 1.54]:
         _box(root, Vector3(x, 1.44, -31.25), Vector3(0.22, 3.10, 0.18),
@@ -310,6 +312,22 @@ static func _shrine_gateway(root: Node3D) -> void:
         Color(0.83, 0.73, 0.51))
     _text(root, "封 声 \n静 听", Vector3(1.90, 2.16, -31.22), 25,
         Color(0.83, 0.73, 0.51))
+
+static func _boundaries(root: Node3D) -> void:
+    # Finish the walkable slice with visible walls and a roadworks barrier.
+    # Solid meshes stop the player before the support plane ends.
+    for x in [-14.0, 14.0]:
+        _box(root, Vector3(x, 1.7, -7), Vector3(0.65, 3.4, 74),
+            Color(0.42, 0.43, 0.37), "plaster", true)
+    _box(root, Vector3(0, 1.7, -40), Vector3(28, 3.4, 0.65),
+        Color(0.42, 0.43, 0.37), "plaster", true)
+    _box(root, Vector3(0, 0.58, 27), Vector3(28, 1.16, 0.35),
+        Color(0.34, 0.39, 0.35), "steel", true)
+    for x in range(-6, 7):
+        _box(root, Vector3(float(x) * 1.85, 0.62, 26.79), Vector3(0.65, 0.66, 0.04),
+            Color(0.64, 0.56, 0.36), "wood")
+    _text(root, "前方修路 · 请绕行", Vector3(0, 1.34, 26.74), 30,
+        Color(0.82, 0.74, 0.54))
 
 static func _street_lighting(root: Node3D, haunted: bool) -> void:
     # Warm, shadow-casting sodium practicals. Blue hour retains the actual town.

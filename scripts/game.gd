@@ -6,6 +6,7 @@ const Interviews = preload("res://scripts/interviews.gd")
 const Interaction = preload("res://scripts/interaction.gd")
 const Screenshots = preload("res://scripts/screenshots.gd")
 const TapeSequence = preload("res://scripts/tape_sequence.gd")
+const Landmarks = preload("res://scripts/landmarks.gd")
 const EVIDENCE := {
     "poster": {
         "name": "寻人启事",
@@ -66,6 +67,8 @@ var ambience
 var current_zone: String = "street"
 var collected: Dictionary = {}
 var finished: bool = false
+var save_path: String = "user://case01-save.json"
+var persistence_enabled: bool = true
 var focus_id: String = ""
 var active_witness: String = ""
 
@@ -83,6 +86,7 @@ var witness_panel_mode: bool = false
 var tape_active: bool = false
 var tape_step: int = -1
 var modal: PanelContainer
+var modal_stack: VBoxContainer
 
 func _ready() -> void:
     _load_save()
@@ -219,11 +223,22 @@ func _layout_modal() -> void:
         modal.offset_right = -22.0
     modal.offset_top = -half_height
     modal.offset_bottom = half_height
+    if modal_stack != null:
+        modal_stack.custom_minimum_size.x = 0
+    # Keep the objective away from the controls and title in smaller windows.
+    help_label.offset_right = view.x - 24.0
+    help_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    objective_label.offset_left = -minf(360.0, view.x - 48.0)
+    objective_label.offset_top = 100.0 if view.x < 1100.0 else 20.0
+    objective_label.offset_bottom = objective_label.offset_top + 64.0
+    photo_notice.offset_right = view.x - 24.0
+    photo_notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 func _begin_modal(heading: String, witness_panel: bool = false) -> VBoxContainer:
     witness_panel_mode = witness_panel
     _layout_modal()
     for old in modal.get_children():
+        modal.remove_child(old)
         old.queue_free()
     var margin := MarginContainer.new()
     margin.add_theme_constant_override("margin_left", 24)
@@ -232,20 +247,27 @@ func _begin_modal(heading: String, witness_panel: bool = false) -> VBoxContainer
     margin.add_theme_constant_override("margin_bottom", 20)
     modal.add_child(margin)
     var stack := VBoxContainer.new()
+    modal_stack = stack
     stack.add_theme_constant_override("separation", 14)
+    stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     var scroller := ScrollContainer.new()
     scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
     margin.add_child(scroller)
-    stack.custom_minimum_size = Vector2(maxf(240.0, modal.offset_right - modal.offset_left - 85.0), 0)
     scroller.add_child(stack)
     var title := Label.new()
     title.text = heading
+    title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     title.add_theme_font_size_override("font_size", 28)
     title.add_theme_color_override("font_color", Color(0.98, 0.83, 0.58))
     stack.add_child(title)
     modal.visible = true
+    help_label.visible = false
+    objective_label.visible = false
+    prompt_label.text = ""
+    crosshair.visible = false
     player.can_move = false
+    player.velocity = Vector3.ZERO
     Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
     return stack
 
@@ -264,10 +286,19 @@ func _add_text(parent: Node, value: String, minimum_height: float = 140.0) -> La
 func _add_button(parent: Node, name: String, callback: Callable) -> Button:
     var button := Button.new()
     button.text = name
+    button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     button.custom_minimum_size = Vector2(0, 42)
     button.add_theme_font_size_override("font_size", 18)
     parent.add_child(button)
     button.pressed.connect(callback)
+    # Only the first button owns initial focus; arrows/Tab navigate the rest.
+    var first_button: bool = true
+    for sibling in parent.get_children():
+        if sibling is Button and sibling != button:
+            first_button = false
+            break
+    if first_button:
+        button.grab_focus()
     return button
 
 func _message(title: String, content: String) -> void:
@@ -283,11 +314,18 @@ func _close_modal() -> void:
         _set_mood(collected.has("tape"))
     _set_witness_speaking("")
     modal.visible = false
+    help_label.visible = true
+    objective_label.visible = true
+    crosshair.visible = true
     player.can_move = true
     Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _go_to(zone: String, initial: bool = false) -> void:
+    if ambience != null:
+        ambience.stop_tape()
     active_witness = ""
+    focus_id = ""
+    prompt_label.text = ""
     tape_active = false
     tape_step = -1
     var previous: String = current_zone
@@ -303,13 +341,16 @@ func _go_to(zone: String, initial: bool = false) -> void:
                 match previous:
                     "shop": spawn = Vector3(-3.4, 1.01, 4)
                     "radio": spawn = Vector3(3.4, 1.01, -8)
-                    "shrine": spawn = Vector3(0, 1.01, -24)
+                    "shrine": spawn = Landmarks.SHRINE_RETURN
             player.global_position = spawn
         _:
             player.global_position = Vector3(0, 1.01, 3.1)
     player.velocity = Vector3.ZERO
+    player.safe_position = player.global_position
     player.rotation.y = 0
-    eye.rotation.x = 0
+    if zone == "street" and previous == "shrine" and not initial:
+        player.rotation.y = PI
+    eye.rotation = Vector3.ZERO
     _update_location_label()
     _update_objective()
     # The first return to town after hearing the private recording is a quiet, one-shot anomaly.
@@ -332,14 +373,15 @@ func _set_mood(unstable: bool) -> void:
         else:
             atmosphere.environment.background_color = Color(0.31, 0.37, 0.43) if unstable else Color(0.36, 0.43, 0.46)
             atmosphere.environment.fog_light_color = Color(0.37, 0.40, 0.45) if unstable else Color(0.46, 0.45, 0.42)
-            atmosphere.environment.fog_density = 0.006 if unstable and current_zone == "radio" else (0.003 if current_zone == "radio" else (0.016 if unstable else 0.009))
-            atmosphere.environment.ambient_light_energy = 0.36 if current_zone == "radio" else 0.55
+            var authored_interior: bool = current_zone in ["radio", "shop"]
+            atmosphere.environment.fog_density = 0.003 if authored_interior else (0.016 if unstable else 0.009)
+            atmosphere.environment.ambient_light_energy = 0.38 if authored_interior else 0.55
     if sunlight != null:
         if current_zone == "street":
             sunlight.light_energy = 0.24 if unstable else 0.43
             sunlight.light_color = Color(0.69, 0.80, 0.84)
         else:
-            sunlight.light_energy = 0.12 if current_zone == "radio" else (0.49 if unstable else 0.9)
+            sunlight.light_energy = 0.12 if current_zone in ["radio", "shop"] else (0.49 if unstable else 0.9)
             sunlight.light_color = Color(1.0, 0.78, 0.56)
 
 func _update_objective() -> void:
@@ -382,6 +424,8 @@ func _process(_delta: float) -> void:
     if not selected.is_empty():
         focus_id = str(selected["id"])
         prompt_label.text = "[ E ]  " + str(selected["name"])
+        if collected.has(focus_id):
+            prompt_label.text += "  ·  已记录"
 
 func _input(event: InputEvent) -> void:
     if event is InputEventKey and event.pressed and not event.echo:
@@ -549,7 +593,7 @@ func _interview_topic(person: String, topic_id: String) -> void:
         if clue != "" and EVIDENCE.has(clue) and not collected.has(clue):
             collected[clue] = true
             _save()
-        var suffix: String = "\n\n（新证词已收入调查笔记）" if clue != "" else ""
+        var suffix: String = "\n\n（证词已收入调查笔记）" if clue != "" else ""
         var stack := _begin_modal(str(witness["name"]), true)
         _add_text(stack, str(topic["text"]) + suffix, 240.0)
         _add_button(stack, "继续问话", Callable(self, "_interview").bind(person))
@@ -588,14 +632,12 @@ func _ready_to_deduce() -> bool:
 
 func _journal() -> void:
     var stack := _begin_modal("调查笔记 · 广播里的人")
-    var scroller := ScrollContainer.new()
-    scroller.custom_minimum_size = Vector2(0, 295)
-    scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    stack.add_child(scroller)
+    # _begin_modal already owns a responsive scroll area. Nested scrolling kept
+    # the footer partly clipped in compact windows and trapped the mouse wheel.
     var evidence_list := VBoxContainer.new()
     evidence_list.add_theme_constant_override("separation", 10)
     evidence_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    scroller.add_child(evidence_list)
+    stack.add_child(evidence_list)
     var discovered_count: int = 0
     for id in EVIDENCE.keys():
         if not collected.has(id):
@@ -646,21 +688,26 @@ func _answer(selection: String) -> void:
         "你终于确定：广播并不是模仿者诞生的起点。\n\n21:47，有人已经在模仿林小禾。\n22:16，那段声音经广播传遍了怀声镇。\n\n广播站的电源突然熄灭。\n你从身后的喇叭听见自己的声音：\n\n『调查结束了。可以回家了。』\n\n—— 第一案原型完成。真正的失踪之谜仍未揭开。" + witness_note)
 
 func _save() -> void:
+    if not persistence_enabled:
+        return
     var save_data := {"found": collected.keys(), "finished": finished}
-    var file := FileAccess.open("user://case01-save.json", FileAccess.WRITE)
+    DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(save_path.get_base_dir()))
+    var file := FileAccess.open(save_path, FileAccess.WRITE)
     if file != null:
         file.store_string(JSON.stringify(save_data))
         file.close()
 
 func _load_save() -> void:
-    if not FileAccess.file_exists("user://case01-save.json"):
+    if not persistence_enabled or not FileAccess.file_exists(save_path):
         return
-    var data: Variant = JSON.parse_string(FileAccess.get_file_as_string("user://case01-save.json"))
+    var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(save_path))
     if not (data is Dictionary):
         return
     var saved: Variant = data.get("found", [])
     if saved is Array:
         for id in saved:
-            if EVIDENCE.has(id):
+            if id is String and EVIDENCE.has(id):
                 collected[id] = true
-    finished = bool(data.get("finished", false))
+    # A truncated or hand-edited save cannot complete a case without its evidence.
+    var completion: Variant = data.get("finished", false)
+    finished = completion is bool and completion == true and _ready_to_deduce()
