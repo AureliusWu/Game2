@@ -7,6 +7,7 @@ func _initialize() -> void:
         quit(1)
         return
     var root: Node = packed.instantiate()
+    root.set("persistence_enabled", false)
     if root == null:
         push_error("Main scene failed to instantiate")
         quit(1)

@@ -3,6 +3,7 @@ extends RefCounted
 ## Albedo, roughness and tangent-space normal maps are generated once and cached.
 ## They are art-directed placeholders, not photographs or licensed texture scans.
 static var cache: Dictionary = {}
+static var texture_cache: Dictionary = {}
 
 static func get_finish(kind: String, tint: Color) -> StandardMaterial3D:
     var key: String = kind + ":" + tint.to_html(false)
@@ -23,6 +24,22 @@ static func get_finish(kind: String, tint: Color) -> StandardMaterial3D:
         mat.emission_energy_multiplier = 0.35
         cache[key] = mat
         return mat
+
+    # Grain depends on the surface type, never on tint. Share the three GPU maps
+    # across differently coloured materials instead of repainting/uploading them.
+    var maps: Dictionary = _textures(kind)
+    mat.albedo_texture = maps["albedo"]
+    mat.roughness_texture = maps["roughness"]
+    mat.normal_enabled = true
+    mat.normal_scale = 0.45 if kind == "plaster" else 0.20
+    mat.normal_texture = maps["normal"]
+    mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+    cache[key] = mat
+    return mat
+
+static func _textures(kind: String) -> Dictionary:
+    if texture_cache.has(kind):
+        return texture_cache[kind]
 
     const SIDE := 128
     var grain := Image.create(SIDE, SIDE, false, Image.FORMAT_RGBA8)
@@ -75,14 +92,13 @@ static func get_finish(kind: String, tint: Color) -> StandardMaterial3D:
     grain.generate_mipmaps()
     normals.generate_mipmaps()
     roughness.generate_mipmaps()
-    mat.albedo_texture = ImageTexture.create_from_image(grain)
-    mat.roughness_texture = ImageTexture.create_from_image(roughness)
-    mat.normal_enabled = true
-    mat.normal_scale = 0.45 if kind == "plaster" else 0.20
-    mat.normal_texture = ImageTexture.create_from_image(normals)
-    mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-    cache[key] = mat
-    return mat
+    var maps := {
+        "albedo": ImageTexture.create_from_image(grain),
+        "roughness": ImageTexture.create_from_image(roughness),
+        "normal": ImageTexture.create_from_image(normals)
+    }
+    texture_cache[kind] = maps
+    return maps
 
 static func _rough(kind: String) -> float:
     match kind:

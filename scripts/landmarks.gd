@@ -1,0 +1,15 @@
+extends RefCounted
+## Shared visible-object anchors. Authoring and interaction must use the same positions.
+const SHRINE_DOOR := Vector3(0.0, 1.45, -31.35)
+const SHRINE_RETURN := Vector3(0.0, 1.01, -28.8)
+const SHOP_DOOR := Vector3(-4.85, 1.2, 4.0)
+const RADIO_DOOR := Vector3(4.85, 1.2, -8.0)
+const PUBLIC_PHONE := Vector3(4.42, 1.5, 16.4)
+const RADIO_LOG := Vector3(-0.52, 1.48, -1.67)
+const RADIO_TAPE := Vector3(1.86, 1.65, -2.10)
+const RADIO_NOTICE := Vector3(4.70, 2.48, -5.51)
+const RADIO_EXIT := Vector3(-2.8, 1.25, 5.60)
+const SHOP_EXIT := Vector3(0.0, 1.25, 5.60)
+const SHOP_LEDGER := Vector3(-1.8, 1.18, -1.60)
+const SHOP_CALENDAR := Vector3(-4.4, 2.35, -5.60)
+const SHOP_WITNESS := Vector3(-3.6, 0.0, 0.1)

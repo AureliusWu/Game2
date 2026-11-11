@@ -1,6 +1,7 @@
 extends RefCounted
 ## Original low-poly witness characters. Procedural meshes, no third-party art.
 ## The deliberately simplified figures are placeholders for authored character assets.
+static var materials: Dictionary = {}
 
 static func build(scene: Node3D, person: String, origin: Vector3) -> Node3D:
     var root := Node3D.new()
@@ -30,6 +31,16 @@ static func build(scene: Node3D, person: String, origin: Vector3) -> Node3D:
     root.add_child(head_pivot)
     _capsule(head_pivot, Vector3(0, 0.21, 0), Vector3(0.38, 0.45, 0.35), skin)
     _sphere(head_pivot, Vector3(0, 0.40, -0.06), Vector3(0.42, 0.18, 0.38), Color(0.16, 0.16, 0.14))
+    # Restrained facial landmarks, still intentionally low-poly transitional faces.
+    _sphere(head_pivot, Vector3(0, 0.20, 0.18), Vector3(0.07, 0.10, 0.08), skin)
+    for side in [-1.0, 1.0]:
+        _sphere(head_pivot, Vector3(side * 0.19, 0.21, 0), Vector3(0.07, 0.12, 0.06), skin)
+        _sphere(head_pivot, Vector3(side * 0.08, 0.25, 0.167), Vector3(0.043, 0.023, 0.022),
+            Color(0.20, 0.17, 0.14))
+        _box(head_pivot, Vector3(side * 0.08, 0.29, 0.163), Vector3(0.075, 0.012, 0.014),
+            Color(0.21, 0.19, 0.15))
+    _box(head_pivot, Vector3(0, 0.12, 0.16), Vector3(0.078, 0.009, 0.014),
+        Color(0.42, 0.27, 0.21))
     if shopkeeper:
         # 2003 small-town shopkeeper: tied-back hair, apron and cardigan.
         _sphere(head_pivot, Vector3(0, 0.29, -0.24), Vector3(0.22, 0.22, 0.20), Color(0.15, 0.14, 0.13))
@@ -42,7 +53,10 @@ static func build(scene: Node3D, person: String, origin: Vector3) -> Node3D:
         _box(root, Vector3(0, 1.28, 0.19), Vector3(0.09, 0.31, 0.05), Color(0.40, 0.27, 0.24))
         _box(root, Vector3(-0.16, 1.25, 0.19), Vector3(0.13, 0.08, 0.03), trim)
         for side in [-1.0, 1.0]:
-            _box(head_pivot, Vector3(side * 0.12, 0.23, 0.185), Vector3(0.18, 0.10, 0.04), Color(0.16, 0.16, 0.15))
+            for y in [0.20, 0.29]:
+                _box(head_pivot, Vector3(side * 0.10, y, 0.185), Vector3(0.15, 0.012, 0.025), Color(0.16, 0.16, 0.15))
+            for dx in [-0.075, 0.075]:
+                _box(head_pivot, Vector3(side * 0.10 + dx, 0.245, 0.185), Vector3(0.012, 0.09, 0.025), Color(0.16, 0.16, 0.15))
         _box(head_pivot, Vector3(0, 0.23, 0.20), Vector3(0.12, 0.03, 0.03), Color(0.16, 0.16, 0.15))
     # A grounded name tag avoids treating the figures as featureless cylinder props.
     var tag := Label3D.new()
@@ -56,9 +70,13 @@ static func build(scene: Node3D, person: String, origin: Vector3) -> Node3D:
     return root
 
 static func _material(color: Color) -> StandardMaterial3D:
+    var key: String = color.to_html()
+    if materials.has(key):
+        return materials[key]
     var mat := StandardMaterial3D.new()
     mat.albedo_color = color
     mat.roughness = 0.93
+    materials[key] = mat
     return mat
 
 static func _box(root: Node3D, at: Vector3, dimensions: Vector3, color: Color) -> void:

@@ -3,7 +3,9 @@ const Dressing = preload("res://scripts/dressing.gd")
 const StoryDressing = preload("res://scripts/story_dressing.gd")
 const Characters = preload("res://scripts/characters.gd")
 const RadioSet = preload("res://scripts/radio_set.gd")
+const ShopSet = preload("res://scripts/shop_set.gd")
 const TownSet = preload("res://scripts/town_set.gd")
+const Landmarks = preload("res://scripts/landmarks.gd")
 const Materials = preload("res://scripts/materials.gd")
 ## Procedural 3D graybox for Case 01. Replace meshes/materials with licensed PBR assets later.
 ## Coordinates are in meters; interactable nodes are represented by stable hotspot IDs.
@@ -28,7 +30,7 @@ func build_zone(zone: String) -> void:
             _build_shrine()
         _:
             push_error("Unknown zone: " + zone)
-    if zone != "radio" and zone != "street":
+    if zone == "shrine":
         Dressing.decorate(self, zone, haunted)
         StoryDressing.decorate(self, zone, haunted)
         _light(Vector3(0, 7, 0), Color(0.83, 0.87, 1.0), 0.3, 23.0)
@@ -98,7 +100,7 @@ func _light(pos: Vector3, color: Color, power: float, reach: float) -> void:
 
 func _spot(id: String, name: String, pos: Vector3) -> void:
     hotspots.append({"id": id, "name": name, "position": pos})
-    if current_zone != "street":
+    if current_zone == "shrine":
         _box(pos + Vector3(0, -0.42, 0), Vector3(0.15, 0.15, 0.15), Color(0.93, 0.70, 0.31), false, true)
 
 func _building(pos: Vector3, size: Vector3, wall: Color, roof: Color) -> void:
@@ -139,12 +141,12 @@ func _lamp_post(pos: Vector3) -> void:
 func _build_street() -> void:
     # Main street now has an independently art-directed world-space set.
     TownSet.build(self, haunted)
-    # Preserve the exact collectible IDs and coordinates used by first-case saves.
+    # Saves use IDs, not positions. Keep targets on their visible object surfaces.
     _spot("poster", "查看寻人启事", Vector3(-4.55, 1.3, 12.0))
-    _spot("public_phone", "查看公用电话", Vector3(4.1, 1.45, 16.0))
-    _spot("enter_shop", "进入小卖部", Vector3(-4.0, 1.2, 4.0))
-    _spot("enter_radio", "进入广播站", Vector3(4.0, 1.2, -8.0))
-    _spot("enter_shrine", "进入祠堂", Vector3(0, 1.2, -26.6))
+    _spot("public_phone", "查看公用电话", Landmarks.PUBLIC_PHONE)
+    _spot("enter_shop", "进入小卖部", Landmarks.SHOP_DOOR)
+    _spot("enter_radio", "进入广播站", Landmarks.RADIO_DOOR)
+    _spot("enter_shrine", "进入祠堂", Landmarks.SHRINE_DOOR)
 
 func _room(floor: Color, wall: Color) -> void:
     _box(Vector3(0, -0.23, 0), Vector3(12, 0.45, 12), floor, true, false, "tile")
@@ -159,27 +161,21 @@ func _room(floor: Color, wall: Color) -> void:
     _lamp_post(Vector3(-4.1, 0, 2.9))
 
 func _build_shop() -> void:
-    _room(Color(0.44, 0.39, 0.29), Color(0.65, 0.60, 0.49))
-    _box(Vector3(-1.8, 0.55, -2.5), Vector3(2.4, 1.1, 1.0), Color(0.44, 0.30, 0.21), true)
-    _box(Vector3(-1.8, 1.2, -2.5), Vector3(2.0, 0.12, 0.85), Color(0.72, 0.67, 0.50))
-    for i in range(4):
-        _box(Vector3(3.5, 0.9 + i * 0.70, -3.3), Vector3(1.65, 0.12, 2.2), Color(0.35, 0.31, 0.23))
-    _box(Vector3(2, 1.0, -4.9), Vector3(0.8, 1.8, 0.6), Color(0.42, 0.57, 0.55))
-    _label("旧账本 / 2003 年 7 月", Vector3(-1.8, 2.0, -2.5))
-    _spot("ledger", "翻阅旧账本", Vector3(-1.8, 1.38, -1.6))
-    _label("汽水  五角", Vector3(3.3, 3.9, -3.3), 30)
-    _spot("calendar", "查看墙上旧日历", Vector3(-4.4, 3.3, -4.8))
-    Characters.build(self, "npc_shop", Vector3(-3.6, 0, 0.1))
-    _spot("npc_shop", "询问吴婶", Vector3(-3.6, 1.42, 0.1))
+    ShopSet.build(self, haunted)
+    _spot("exit", "返回街道", Landmarks.SHOP_EXIT)
+    _spot("ledger", "翻阅旧账本", Landmarks.SHOP_LEDGER)
+    _spot("calendar", "查看墙上旧日历", Landmarks.SHOP_CALENDAR)
+    Characters.build(self, "npc_shop", Landmarks.SHOP_WITNESS)
+    _spot("npc_shop", "询问吴婶", Landmarks.SHOP_WITNESS + Vector3(0, 1.42, 0))
 
 func _build_radio() -> void:
     # One complete art-directed slice; no legacy greybox boxes underneath it.
     RadioSet.build(self, haunted)
     # Stable hotspot IDs preserve quest logic, dialogue and existing save files.
-    _spot("exit", "返回街道", Vector3(0.0, 1.25, 4.4))
-    _spot("log", "阅读值班日志", Vector3(-2.0, 1.45, -1.64))
-    _spot("tape", "播放旧录音", Vector3(2.0, 1.45, -1.64))
-    _spot("broadcast_notice", "查看停播通知", Vector3(-4.8, 2.62, -5.38))
+    _spot("exit", "返回街道", Landmarks.RADIO_EXIT)
+    _spot("log", "阅读值班日志", Landmarks.RADIO_LOG)
+    _spot("tape", "播放旧录音", Landmarks.RADIO_TAPE)
+    _spot("broadcast_notice", "查看停播通知", Landmarks.RADIO_NOTICE)
     Characters.build(self, "npc_radio", Vector3(3.35, 0.0, 0.5))
     _spot("npc_radio", "询问陈站长", Vector3(3.35, 1.42, 0.5))
 

@@ -12,6 +12,8 @@ func _capture_all() -> void:
         _fail("Main scene could not load")
         return
     var game: Node3D = packed.instantiate()
+    # Frame captures must be deterministic and must never read/write player progress.
+    game.set("persistence_enabled", false)
     get_root().add_child(game)
     await process_frame
     var camera: Camera3D = game.get_node("Player/Camera3D") as Camera3D
@@ -64,7 +66,24 @@ func _capture_all() -> void:
     if not await _snap(game, player, camera, "07_haunted_street", "street",
         Vector3(0.0, 1.01, 17.0), Vector3(-1.0, 1.65, 2.0)):
         return
-    print("VISUAL_CAPTURE_OK: 9 real Godot rendered frames")
+    if not await _snap(game, player, camera, "10_shop_counter", "shop",
+        Vector3(-1.6, 1.01, 0.35), Vector3(-1.8, 1.18, -1.60)):
+        return
+    if not await _snap(game, player, camera, "11_radio_notice", "radio",
+        Vector3(3.25, 1.01, -4.15), Vector3(4.70, 2.48, -5.51)):
+        return
+    if not await _snap(game, player, camera, "12_shrine_entry", "street",
+        Vector3(0.0, 1.01, -28.8), Vector3(0.0, 1.45, -31.35)):
+        return
+    # Resize an existing panel, rather than only opening it at the final size.
+    game.call("_journal")
+    get_root().content_scale_size = Vector2i.ZERO
+    get_root().size = Vector2i(800, 600)
+    if not await _save("13_journal_compact"):
+        return
+    print("VISUAL_CAPTURE_OK: 13 real Godot rendered frames")
+    game.queue_free()
+    await process_frame
     quit(0)
 
 func _snap(game: Node3D, player: CharacterBody3D, camera: Camera3D,
