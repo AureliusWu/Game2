@@ -30,7 +30,8 @@ static func choose(
         var hit: Dictionary = space.intersect_ray(query)
         if not hit.is_empty():
             var hit_distance: float = origin.distance_to(hit["position"])
-            if hit_distance < distance - 0.12:
+            var own_target: bool = entry.has("target_rid") and hit.get("rid") == entry["target_rid"]
+            if not own_target and hit_distance < distance - 0.12:
                 continue
         var score: float = alignment * 6.0 - distance * 0.40
         if score > best_score:

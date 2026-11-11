@@ -31,7 +31,7 @@ static func build(scene: Node3D, haunted: bool) -> void:
         _box(anomaly, Vector3(-5.20, 2.08, -12.3), Vector3(0.06, 0.86, 1.72),
             Color(0.29, 0.36, 0.32), "steel")
         _text(anomaly, "广播已经结束\n请不要回答", Vector3(-5.04, 2.12, -12.3),
-            29, Color(0.96, 0.43, 0.31))
+            29, Color(0.96, 0.43, 0.31), true, PI * 0.5)
         _box(anomaly, Vector3(-3.9, 2.90, 2.9), Vector3(0.18, 0.12, 0.09),
             Color(0.81, 0.27, 0.15), "glass")
         _light(anomaly, Vector3(-4.23, 2.65, 2.6),
@@ -174,14 +174,14 @@ static func _storefronts(root: Node3D) -> void:
             Color(0.49, 0.36, 0.24) if i % 2 == 0 else Color(0.56, 0.45, 0.31),
             "wood")
     _text(root, "汽水 / 糖果 / 日用百货", Vector3(-4.97, 2.18, 6.65),
-        22, Color(0.84, 0.78, 0.61))
+        22, Color(0.84, 0.78, 0.61), true, PI * 0.5)
     # Public broadcast building: period-correct glazed doors and defunct speaker.
     _entrance(root, 1, -8.0, Color(0.23, 0.34, 0.33), "县有线广播站\n值班室")
     _awning(root, 1, -8.0, 5.0, Color(0.34, 0.42, 0.41))
     _box(root, Vector3(5.06, 3.60, -8.00), Vector3(0.16, 0.78, 3.48),
         Color(0.24, 0.32, 0.29), "wood")
     _text(root, "怀声镇广播站  2003", Vector3(4.81, 3.66, -8.0),
-        25, Color(0.84, 0.73, 0.53))
+        25, Color(0.84, 0.73, 0.53), true, -PI * 0.5)
     _box(root, Vector3(4.93, 4.36, -6.25), Vector3(0.20, 0.55, 0.46),
         Color(0.58, 0.59, 0.52), "steel")
     for i in range(5):
@@ -203,7 +203,7 @@ static func _entrance(root: Node3D, side: int, z: float,
         _box(root, Vector3(s * 4.90, 1.21, z + dz),
             Vector3(0.13, 2.48, 0.13), Color(0.57, 0.51, 0.38), "wood")
     _text(root, words, Vector3(s * 4.74, 2.81, z),
-        29, Color(0.83, 0.72, 0.52))
+        29, Color(0.83, 0.72, 0.52), true, -s * PI * 0.5)
 
 static func _awning(root: Node3D, side: int, z: float, width: float, color: Color) -> void:
     var s: float = float(side)
@@ -227,7 +227,7 @@ static func _notice(root: Node3D) -> void:
         _box(root, Vector3(x + dx, 0.84, z - 0.08), Vector3(0.11, 1.66, 0.15),
             Color(0.38, 0.29, 0.21), "wood")
     _box(root, Vector3(x, 1.48, z), Vector3(1.44, 1.35, 0.16),
-        Color(0.29, 0.25, 0.21), "wood")
+        Color(0.29, 0.25, 0.21), "wood", true)
     _box(root, Vector3(x, 1.50, z + 0.095), Vector3(1.18, 1.10, 0.025),
         Color(0.78, 0.70, 0.52), "paper")
     _box(root, Vector3(x, 2.20, z), Vector3(1.63, 0.11, 0.45),
@@ -241,13 +241,14 @@ static func _notice(root: Node3D) -> void:
 static func _phone(root: Node3D) -> void:
     # Faded public phone cabinet and scratched aluminium hood.
     _box(root, Vector3(4.98, 1.13, 16.4), Vector3(0.58, 2.19, 1.18),
-        Color(0.21, 0.40, 0.36), "steel")
+        Color(0.21, 0.40, 0.36), "steel", true)
     _box(root, Vector3(4.55, 1.55, 16.4), Vector3(0.06, 0.89, 0.70),
         Color(0.38, 0.47, 0.42), "bakelite")
     _box(root, Vector3(4.49, 1.76, 16.4), Vector3(0.03, 0.29, 0.43),
         Color(0.17, 0.24, 0.25), "glass")
-    _text(root, "公用电话", Vector3(4.49, 2.46, 16.4),
-        23, Color(0.80, 0.77, 0.58))
+    _box(root, Vector3(4.49, 2.46, 16.4), Vector3(0.05, 0.30, 0.94), GREEN, "steel")
+    _text(root, "公用电话", Vector3(4.45, 2.46, 16.4),
+        23, Color(0.80, 0.77, 0.58), true, -PI * 0.5)
     for i in range(9):
         _box(root, Vector3(4.48, 1.34 - float(i / 3) * 0.10,
             16.2 + float(i % 3) * 0.16),
@@ -303,15 +304,15 @@ static func _shrine_gateway(root: Node3D) -> void:
     _box(root, Vector3(0, 3.91, -31.28), Vector3(2.26, 0.58, 0.13),
         Color(0.30, 0.24, 0.20), "wood")
     _text(root, "怀 声 祠", Vector3(0, 3.91, -31.12), 35,
-        Color(0.78, 0.64, 0.47))
+        Color(0.78, 0.64, 0.47), true)
     # Painted red door couplets, fictional folkloric prohibition.
     for x in [-1.90, 1.90]:
         _box(root, Vector3(x, 2.12, -31.38), Vector3(0.62, 2.51, 0.07),
             Color(0.46, 0.19, 0.16), "paper")
     _text(root, "勿 应 \n夜 名", Vector3(-1.90, 2.16, -31.22), 25,
-        Color(0.83, 0.73, 0.51))
+        Color(0.83, 0.73, 0.51), true)
     _text(root, "封 声 \n静 听", Vector3(1.90, 2.16, -31.22), 25,
-        Color(0.83, 0.73, 0.51))
+        Color(0.83, 0.73, 0.51), true)
 
 static func _boundaries(root: Node3D) -> void:
     # Finish the walkable slice with visible walls and a roadworks barrier.
@@ -326,8 +327,9 @@ static func _boundaries(root: Node3D) -> void:
     for x in range(-6, 7):
         _box(root, Vector3(float(x) * 1.85, 0.62, 26.79), Vector3(0.65, 0.66, 0.04),
             Color(0.64, 0.56, 0.36), "wood")
-    _text(root, "前方修路 · 请绕行", Vector3(0, 1.34, 26.74), 30,
-        Color(0.82, 0.74, 0.54))
+    _box(root, Vector3(0, 1.34, 26.78), Vector3(3.6, 0.45, 0.06), GREEN, "wood")
+    _text(root, "前方修路 · 请绕行", Vector3(0, 1.34, 26.73), 30,
+        Color(0.82, 0.74, 0.54), true, PI)
 
 static func _street_lighting(root: Node3D, haunted: bool) -> void:
     # Warm, shadow-casting sodium practicals. Blue hour retains the actual town.
@@ -417,7 +419,7 @@ static func _beam(root: Node3D, from_pos: Vector3, to_pos: Vector3,
     root.add_child(node)
 
 static func _text(root: Node3D, content: String, pos: Vector3,
-    font_size: int, tint: Color, mounted: bool = false) -> void:
+    font_size: int, tint: Color, mounted: bool = false, yaw: float = 0.0) -> void:
     var label := Label3D.new()
     label.text = content
     label.position = pos
@@ -427,6 +429,7 @@ static func _text(root: Node3D, content: String, pos: Vector3,
     label.outline_size = 2
     # Paper text must remain in the notice plane, including oblique approaches.
     label.billboard = BaseMaterial3D.BILLBOARD_DISABLED if mounted else BaseMaterial3D.BILLBOARD_ENABLED
+    label.rotation.y = yaw
     root.add_child(label)
 
 static func _light(root: Node3D, pos: Vector3, tint: Color,

@@ -70,6 +70,13 @@ jobs:
           timeout 120s Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/player_ux.gd 2>&1 | tee /tmp/godot-player-ux.log
           if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-player-ux.log; then exit 1; fi
           grep -q 'PLAYER_UX_OK:' /tmp/godot-player-ux.log
+      - name: Free-roam viewpoints, collisions and dialogue lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 120s Godot_v4.7.2-stable_linux.x86_64 --headless --path . --fixed-fps 60 --script res://tests/free_roam.gd 2>&1 | tee /tmp/godot-free-roam.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-free-roam.log; then exit 1; fi
+          grep -q 'FREE_ROAM_OK:' /tmp/godot-free-roam.log
 
   windows-build:
     needs: [smoke]

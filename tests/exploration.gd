@@ -21,7 +21,8 @@ func _run() -> void:
     # Deliberately use independent authored coordinates, not the anchor constants.
     # A correct ID at an obsolete location must fail these tests.
     var approaches: Array[Dictionary] = [
-        {"zone": "street", "id": "poster", "at": Vector3(-4.55, 1.01, 14.0)},
+        {"zone": "street", "id": "poster", "at": Vector3(-4.55, 1.01, 14.0),
+            "target": Vector3(-4.55, 1.5, 12.13)},
         {"zone": "street", "id": "public_phone", "at": Vector3(2.0, 1.01, 16.4),
             "target": Vector3(4.42, 1.5, 16.4)},
         {"zone": "street", "id": "enter_shop", "at": Vector3(-2.6, 1.01, 4.0),
@@ -46,8 +47,12 @@ func _run() -> void:
         {"zone": "radio", "id": "exit", "at": Vector3(-2.8, 1.01, 3.7),
             "target": Vector3(-2.8, 1.25, 5.6)},
         {"zone": "radio", "id": "npc_radio", "at": Vector3(3.35, 1.01, 2.6)},
-        {"zone": "shrine", "id": "ritual", "at": Vector3(-2.3, 1.01, 0.1)},
-        {"zone": "shrine", "id": "tablet", "at": Vector3(0, 1.01, -1.0)}
+        {"zone": "shrine", "id": "ritual", "at": Vector3(-2.3, 1.01, 0.1),
+            "target": Vector3(-2.3, 1.25, -2.1)},
+        {"zone": "shrine", "id": "tablet", "at": Vector3(0, 1.01, -1.0),
+            "target": Vector3(0, 1.9, -3.85)},
+        {"zone": "shrine", "id": "exit", "at": Vector3(0, 1.01, 3.5),
+            "target": Vector3(0, 1.25, 5.6)}
     ]
     for entry in approaches:
         game.call("_go_to", entry["zone"])
@@ -142,7 +147,7 @@ func _run() -> void:
     if not game.crosshair.visible:
         _fail("Aiming reticle did not return after dialogue")
         return
-    print("EXPLORATION_OK: 16 visible approaches, wall occlusion, perimeter, recovery, cursor, shared textures, compact UI")
+    print("EXPLORATION_OK: 17 visible approaches, wall occlusion, perimeter, recovery, cursor, shared textures, compact UI")
     game.queue_free()
     await process_frame
     quit(0)

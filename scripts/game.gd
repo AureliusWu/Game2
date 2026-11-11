@@ -8,6 +8,7 @@ const Screenshots = preload("res://scripts/screenshots.gd")
 const TapeSequence = preload("res://scripts/tape_sequence.gd")
 const Landmarks = preload("res://scripts/landmarks.gd")
 const CaseBoard = preload("res://scripts/case_board.gd")
+const ConversationStage = preload("res://scripts/conversation_stage.gd")
 const EVIDENCE := {
     "poster": {
         "name": "寻人启事",
@@ -94,8 +95,14 @@ var modal: PanelContainer
 var modal_stack: VBoxContainer
 var navigation_label: Label
 var guidance_enabled: bool = false
+var conversation_stage = ConversationStage.new()
 
 func _ready() -> void:
+    # Layout follows the actual window, rather than a fixed 1280px canvas that
+    # kept the wide conversation panel even in a physically narrow window.
+    get_window().content_scale_size = Vector2i.ZERO
+    get_window().min_size = Vector2i(640, 360)
+    get_window().title = str(ProjectSettings.get_setting("application/config/name")) + " · v" + str(ProjectSettings.get_setting("application/config/version"))
     _load_save()
     _setup_lighting()
     world = WorldBuilder.new()
@@ -106,7 +113,8 @@ func _ready() -> void:
     add_child(ambience)
     _create_ui()
     _go_to("street", true)
-    get_viewport().size_changed.connect(_layout_modal)
+    get_viewport().size_changed.connect(_resize_ui)
+    tree_exiting.connect(conversation_stage.finish)
     if finished:
         _message("《旧梦乡》· 广播里的人",
             "你已经揭开了这起案件的第一层矛盾。\n\n档案与线索仍然保留。按 J 可以重新阅读调查笔记。")
@@ -233,10 +241,21 @@ func _layout_modal() -> void:
     if witness_panel_mode and view.x >= 1100.0:
         modal.anchor_left = 1.0
         modal.anchor_right = 1.0
-        modal.offset_left = -minf(620.0, view.x * 0.44)
+        modal.offset_left = -minf(420.0, view.x * 0.36) - 22.0
         modal.offset_right = -22.0
     modal.offset_top = -half_height
     modal.offset_bottom = half_height
+    modal.anchor_top = 0.5
+    modal.anchor_bottom = 0.5
+    if witness_panel_mode and view.x < 1100.0:
+        modal.anchor_left = 0.0
+        modal.anchor_right = 1.0
+        modal.anchor_top = 1.0
+        modal.anchor_bottom = 1.0
+        modal.offset_left = 18.0
+        modal.offset_right = -18.0
+        modal.offset_top = -minf(350.0, view.y * 0.56)
+        modal.offset_bottom = -18.0
     if modal_stack != null:
         modal_stack.custom_minimum_size.x = 0
     # Keep the objective away from the controls and title in smaller windows.
@@ -251,18 +270,45 @@ func _layout_modal() -> void:
     navigation_label.size.x = view.x - 48.0
     title_label.visible = not modal.visible or view.x >= 1100.0
 
+func _resize_ui() -> void:
+    _layout_modal()
+    conversation_stage.reframe()
+
 func _begin_modal(heading: String, witness_panel: bool = false) -> VBoxContainer:
+    if not witness_panel:
+        conversation_stage.finish()
+        _set_witness_speaking("")
     witness_panel_mode = witness_panel
     _layout_modal()
     for old in modal.get_children():
         modal.remove_child(old)
         old.queue_free()
     var margin := MarginContainer.new()
-    margin.add_theme_constant_override("margin_left", 24)
-    margin.add_theme_constant_override("margin_right", 24)
-    margin.add_theme_constant_override("margin_top", 22)
-    margin.add_theme_constant_override("margin_bottom", 20)
+    margin.add_theme_constant_override("margin_left", 20)
+    margin.add_theme_constant_override("margin_right", 20)
+    margin.add_theme_constant_override("margin_top", 16)
+    margin.add_theme_constant_override("margin_bottom", 16)
     modal.add_child(margin)
+    var frame := VBoxContainer.new()
+    frame.add_theme_constant_override("separation", 12)
+    margin.add_child(frame)
+    var header := HBoxContainer.new()
+    frame.add_child(header)
+    var title := Label.new()
+    title.text = heading
+    title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    title.add_theme_font_size_override("font_size", 24 if witness_panel else 26)
+    title.add_theme_color_override("font_color", Color(0.98, 0.83, 0.58))
+    header.add_child(title)
+    var close := Button.new()
+    close.text = "×"
+    close.tooltip_text = "关闭 · Esc"
+    close.custom_minimum_size = Vector2(36, 36)
+    close.focus_mode = Control.FOCUS_NONE
+    close.add_theme_font_size_override("font_size", 26)
+    close.pressed.connect(_close_modal)
+    header.add_child(close)
     var stack := VBoxContainer.new()
     modal_stack = stack
     stack.add_theme_constant_override("separation", 14)
@@ -271,14 +317,8 @@ func _begin_modal(heading: String, witness_panel: bool = false) -> VBoxContainer
     scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     scroller.follow_focus = true
     scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    margin.add_child(scroller)
+    frame.add_child(scroller)
     scroller.add_child(stack)
-    var title := Label.new()
-    title.text = heading
-    title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    title.add_theme_font_size_override("font_size", 28)
-    title.add_theme_color_override("font_color", Color(0.98, 0.83, 0.58))
-    stack.add_child(title)
     modal.visible = true
     title_label.visible = get_viewport().get_visible_rect().size.x >= 1100.0
     help_label.visible = false
@@ -327,6 +367,7 @@ func _message(title: String, content: String) -> void:
     _add_button(stack, "继续", Callable(self, "_close_modal"))
 
 func _close_modal() -> void:
+    conversation_stage.finish()
     if tape_active:
         tape_active = false
         tape_step = -1
@@ -379,6 +420,7 @@ func _restart_case() -> void:
     _message("重新抵达 · 怀声镇", "你又站在镇口。左侧木告示栏上，寻人启事的印章仍然异常鲜红。\n\nWASD 移动，E 调查。需要方向时可以按 H，按 J 整理笔记。")
 
 func _go_to(zone: String, initial: bool = false) -> void:
+    conversation_stage.finish()
     if ambience != null:
         ambience.stop_tape()
     active_witness = ""
@@ -408,6 +450,8 @@ func _go_to(zone: String, initial: bool = false) -> void:
     player.rotation.y = 0
     if zone == "street" and previous == "shrine" and not initial:
         player.rotation.y = PI
+    elif zone == "street" and previous in ["shop", "radio"] and not initial:
+        player.rotation.y = -PI * 0.5 if previous == "shop" else PI * 0.5
     eye.rotation = Vector3.ZERO
     _update_location_label()
     _update_objective()
@@ -431,15 +475,14 @@ func _set_mood(unstable: bool) -> void:
         else:
             atmosphere.environment.background_color = Color(0.31, 0.37, 0.43) if unstable else Color(0.36, 0.43, 0.46)
             atmosphere.environment.fog_light_color = Color(0.37, 0.40, 0.45) if unstable else Color(0.46, 0.45, 0.42)
-            var authored_interior: bool = current_zone in ["radio", "shop"]
-            atmosphere.environment.fog_density = 0.003 if authored_interior else (0.016 if unstable else 0.009)
-            atmosphere.environment.ambient_light_energy = 0.38 if authored_interior else 0.55
+            atmosphere.environment.fog_density = 0.003
+            atmosphere.environment.ambient_light_energy = 0.38
     if sunlight != null:
         if current_zone == "street":
             sunlight.light_energy = 0.24 if unstable else 0.43
             sunlight.light_color = Color(0.69, 0.80, 0.84)
         else:
-            sunlight.light_energy = 0.12 if current_zone in ["radio", "shop"] else (0.49 if unstable else 0.9)
+            sunlight.light_energy = 0.12
             sunlight.light_color = Color(1.0, 0.78, 0.56)
 
 func _update_objective() -> void:
@@ -658,12 +701,20 @@ func _interview(person: String) -> void:
     if not Interviews.PEOPLE.has(person):
         return
     _set_witness_speaking(person)
+    var actor: Node3D = world.get_node_or_null("Witness_" + person)
+    if actor != null:
+        conversation_stage.begin(actor, eye)
     var witness: Dictionary = Interviews.PEOPLE[person]
-    var stack := _begin_modal("问话 · " + str(witness["name"]), true)
-    _add_text(stack, str(witness["intro"]), 155.0)
+    var stack := _begin_modal(str(witness.get("short_name", witness["name"])), true)
+    _add_text(stack, str(witness["intro"]), 80.0)
     for topic in witness["topics"]:
         var id: String = str(topic["id"])
-        _add_button(stack, str(topic["label"]), Callable(self, "_interview_topic").bind(person, id))
+        var question: String = str(topic["label"])
+        if person == "npc_shop" and id == "ledger" and not collected.has("ledger"):
+            question = "问：失踪以后，还有人来赊账吗？"
+        elif person == "npc_radio" and id == "tape" and not collected.has("tape"):
+            question = "问：那晚最早的声音从哪里来？"
+        _add_button(stack, question, Callable(self, "_interview_topic").bind(person, id))
     _add_button(stack, "结束问话", Callable(self, "_close_modal"))
 
 func _interview_topic(person: String, topic_id: String) -> void:
@@ -679,8 +730,8 @@ func _interview_topic(person: String, topic_id: String) -> void:
             collected[clue] = true
             _save()
         var suffix: String = "\n\n（证词已收入调查笔记）" if clue != "" else ""
-        var stack := _begin_modal(str(witness["name"]), true)
-        _add_text(stack, str(topic["text"]) + suffix, 240.0)
+        var stack := _begin_modal(str(witness.get("short_name", witness["name"])), true)
+        _add_text(stack, str(topic["text"]) + suffix, 120.0)
         _add_button(stack, "继续问话", Callable(self, "_interview").bind(person))
         _add_button(stack, "结束问话", Callable(self, "_close_modal"))
         return

@@ -37,10 +37,10 @@ static func guidance(zone: String, found: Dictionary) -> Dictionary:
                 return {"at": Landmarks.RADIO_LOG, "name": "控制台左侧的值班记录"}
             return {"at": Landmarks.RADIO_TAPE, "name": "控制台右侧的播放键"} if not found.has("tape") else {"at": Landmarks.RADIO_EXIT, "name": "返回街道的门"}
         "shrine":
-            return {"at": Vector3(0, 1.25, 4.4), "name": "返回街道的门"}
+            return {"at": Landmarks.SHRINE_EXIT, "name": "返回街道的门"}
         _:
             if not found.has("poster"):
-                return {"at": Vector3(-4.55, 1.3, 12), "name": "镇口左侧木告示栏"}
+                return {"at": Landmarks.STREET_POSTER, "name": "镇口左侧木告示栏"}
             if not found.has("ledger"):
                 return {"at": Landmarks.SHOP_DOOR, "name": "街道左侧的吉祥小卖部"}
             return {"at": Landmarks.RADIO_DOOR, "name": "街道右侧的旧广播站"}

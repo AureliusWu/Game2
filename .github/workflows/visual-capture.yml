@@ -5,6 +5,7 @@ on:
     paths:
       - 'tests/capture_visuals.gd'
       - 'tests/player_journey.gd'
+      - 'tests/capture_free_roam.gd'
       - '.github/workflows/visual-capture.yml'
       - 'scripts/**'
       - 'scenes/**'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'tests/capture_visuals.gd'
       - 'tests/player_journey.gd'
+      - 'tests/capture_free_roam.gd'
       - '.github/workflows/visual-capture.yml'
       - 'scripts/**'
       - 'scenes/**'
@@ -75,6 +77,27 @@ jobs:
           path: build/visual-captures/*.png
           retention-days: 14
           if-no-files-found: error
+      - name: Reported dialogue and off-route visual regressions
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          GALLIUM_DRIVER: llvmpipe
+        run: |
+          set -euo pipefail
+          timeout 180s xvfb-run -a -s '-screen 0 2048x1152x24' \
+            Godot_v4.7.2-stable_linux.x86_64 --path . --fixed-fps 60 \
+            --rendering-method gl_compatibility --audio-driver Dummy --resolution 1280x720 \
+            --script res://tests/capture_free_roam.gd 2>&1 | tee /tmp/free-roam-visual.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:|FREE_ROAM_CAPTURE_FAILED:' /tmp/free-roam-visual.log; then exit 1; fi
+          grep -q 'FREE_ROAM_CAPTURE_OK: 10' /tmp/free-roam-visual.log
+          test "$(find build/free-roam-captures -maxdepth 1 -name '*.png' | wc -l)" -eq 10
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Game2-Free-Roam-Regression
+          path: build/free-roam-captures/*.png
+          retention-days: 14
+          if-no-files-found: warn
       - name: Continuous player input playthrough
         shell: bash
         env:
@@ -91,6 +114,7 @@ jobs:
           test "$(find build/player-journey -maxdepth 1 -name '*.png' | wc -l)" -eq 16
           test -s build/player-journey/journey.json
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: Game2-Player-Journey
           path: build/player-journey/

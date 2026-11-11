@@ -1,9 +1,8 @@
 extends Node3D
-const Dressing = preload("res://scripts/dressing.gd")
-const StoryDressing = preload("res://scripts/story_dressing.gd")
 const Characters = preload("res://scripts/characters.gd")
 const RadioSet = preload("res://scripts/radio_set.gd")
 const ShopSet = preload("res://scripts/shop_set.gd")
+const ShrineSet = preload("res://scripts/shrine_set.gd")
 const TownSet = preload("res://scripts/town_set.gd")
 const Landmarks = preload("res://scripts/landmarks.gd")
 const Materials = preload("res://scripts/materials.gd")
@@ -30,10 +29,6 @@ func build_zone(zone: String) -> void:
             _build_shrine()
         _:
             push_error("Unknown zone: " + zone)
-    if zone == "shrine":
-        Dressing.decorate(self, zone, haunted)
-        StoryDressing.decorate(self, zone, haunted)
-        _light(Vector3(0, 7, 0), Color(0.83, 0.87, 1.0), 0.3, 23.0)
 
 func _material(color: Color, emissive: bool = false, surface: String = "") -> StandardMaterial3D:
     if surface != "" and not emissive:
@@ -98,10 +93,11 @@ func _light(pos: Vector3, color: Color, power: float, reach: float) -> void:
     light.shadow_enabled = false
     add_child(light)
 
-func _spot(id: String, name: String, pos: Vector3) -> void:
-    hotspots.append({"id": id, "name": name, "position": pos})
-    if current_zone == "shrine":
-        _box(pos + Vector3(0, -0.42, 0), Vector3(0.15, 0.15, 0.15), Color(0.93, 0.70, 0.31), false, true)
+func _spot(id: String, name: String, pos: Vector3, body: CollisionObject3D = null) -> void:
+    var entry := {"id": id, "name": name, "position": pos}
+    if body != null:
+        entry["target_rid"] = body.get_rid()
+    hotspots.append(entry)
 
 func _building(pos: Vector3, size: Vector3, wall: Color, roof: Color) -> void:
     _box(pos, size, wall, true, false, "plaster")
@@ -142,31 +138,19 @@ func _build_street() -> void:
     # Main street now has an independently art-directed world-space set.
     TownSet.build(self, haunted)
     # Saves use IDs, not positions. Keep targets on their visible object surfaces.
-    _spot("poster", "查看寻人启事", Vector3(-4.55, 1.3, 12.0))
+    _spot("poster", "查看寻人启事", Landmarks.STREET_POSTER)
     _spot("public_phone", "查看公用电话", Landmarks.PUBLIC_PHONE)
     _spot("enter_shop", "进入小卖部", Landmarks.SHOP_DOOR)
     _spot("enter_radio", "进入广播站", Landmarks.RADIO_DOOR)
     _spot("enter_shrine", "进入祠堂", Landmarks.SHRINE_DOOR)
-
-func _room(floor: Color, wall: Color) -> void:
-    _box(Vector3(0, -0.23, 0), Vector3(12, 0.45, 12), floor, true, false, "tile")
-    _box(Vector3(0, 3.2, -6), Vector3(12, 6.4, 0.35), wall, true, false, "plaster")
-    _box(Vector3(-6, 3.2, 0), Vector3(0.35, 6.4, 12), wall, true, false, "plaster")
-    _box(Vector3(6, 3.2, 0), Vector3(0.35, 6.4, 12), wall, true, false, "plaster")
-    _box(Vector3(0, 3.2, 6), Vector3(12, 6.4, 0.35), wall, true, false, "plaster")
-    _box(Vector3(0, 6.45, 0), Vector3(12, 0.25, 12), Color(0.30, 0.31, 0.28), false, false, "concrete")
-    _box(Vector3(0, 3.3, -5.75), Vector3(2.2, 1.4, 0.08), Color(0.23, 0.33, 0.36))
-    _box(Vector3(0, 3.3, -5.68), Vector3(0.07, 1.5, 0.08), Color(0.50, 0.45, 0.33))
-    _spot("exit", "返回街道", Vector3(0, 1.25, 4.4))
-    _lamp_post(Vector3(-4.1, 0, 2.9))
 
 func _build_shop() -> void:
     ShopSet.build(self, haunted)
     _spot("exit", "返回街道", Landmarks.SHOP_EXIT)
     _spot("ledger", "翻阅旧账本", Landmarks.SHOP_LEDGER)
     _spot("calendar", "查看墙上旧日历", Landmarks.SHOP_CALENDAR)
-    Characters.build(self, "npc_shop", Landmarks.SHOP_WITNESS)
-    _spot("npc_shop", "询问吴婶", Landmarks.SHOP_WITNESS + Vector3(0, 1.42, 0))
+    var witness: Node3D = Characters.build(self, "npc_shop", Landmarks.SHOP_WITNESS)
+    _spot("npc_shop", "询问吴婶", Landmarks.SHOP_WITNESS + Vector3(0, 1.42, 0), witness.get_node("Body"))
 
 func _build_radio() -> void:
     # One complete art-directed slice; no legacy greybox boxes underneath it.
@@ -176,18 +160,12 @@ func _build_radio() -> void:
     _spot("log", "阅读值班日志", Landmarks.RADIO_LOG)
     _spot("tape", "播放旧录音", Landmarks.RADIO_TAPE)
     _spot("broadcast_notice", "查看停播通知", Landmarks.RADIO_NOTICE)
-    Characters.build(self, "npc_radio", Vector3(3.35, 0.0, 0.5))
-    _spot("npc_radio", "询问陈站长", Vector3(3.35, 1.42, 0.5))
+    var witness: Node3D = Characters.build(self, "npc_radio", Vector3(3.35, 0.0, 0.5))
+    _spot("npc_radio", "询问陈站长", Vector3(3.35, 1.42, 0.5), witness.get_node("Body"))
 
 func _build_shrine() -> void:
-    _room(Color(0.28, 0.25, 0.22), Color(0.34, 0.32, 0.28))
-    _box(Vector3(0, 0.85, -4.3), Vector3(4.1, 1.7, 1.3), Color(0.30, 0.16, 0.11), true)
-    for x in [-1.0, 0.0, 1.0]:
-        _box(Vector3(x, 2.2, -4.35), Vector3(0.55, 1.5, 0.14), Color(0.16, 0.10, 0.08))
-    _box(Vector3(0, 1.8, -3.5), Vector3(0.30, 0.75, 0.3), Color(0.64, 0.44, 0.22), false, true)
-    _box(Vector3(-3.3, 0.85, -2.4), Vector3(1.5, 1.7, 0.5), Color(0.34, 0.25, 0.19))
-    _label("封声残页", Vector3(-2.3, 2.8, -2.2))
-    _spot("ritual", "阅读封声残页", Vector3(-2.3, 1.4, -2.1))
-    _spot("tablet", "查看无名牌位", Vector3(0.0, 2.3, -3.55))
-    _light(Vector3(0, 3.4, -3), Color(0.99, 0.62, 0.32), 1.6, 10.0)
+    ShrineSet.build(self, haunted)
+    _spot("exit", "返回街道", Landmarks.SHRINE_EXIT)
+    _spot("ritual", "阅读封声残页", Landmarks.SHRINE_RITUAL)
+    _spot("tablet", "查看无名牌位", Landmarks.SHRINE_TABLET)
 
