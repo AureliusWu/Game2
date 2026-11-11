@@ -13,7 +13,8 @@ func _fail(reason: String) -> void:
 func _buttons(root: Node) -> Array[String]:
     var labels: Array[String] = []
     for node in root.find_children("*", "Button", true, false):
-        labels.append(node.text)
+        if node.focus_mode != Control.FOCUS_NONE:
+            labels.append(node.text)
     return labels
 
 func _run() -> void:

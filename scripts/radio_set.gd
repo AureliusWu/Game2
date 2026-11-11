@@ -150,8 +150,8 @@ static func _control_desk(root: Node3D, haunted: bool) -> void:
             Vector3(0.20, 0.01, 0.032), Color(0.61, 0.65, 0.58), "steel")
     _box(root, Landmarks.RADIO_LOG + Vector3(0, -0.022, 0), Vector3(0.98, 0.015, 0.38),
         Color(0.84, 0.75, 0.56), "paper")
-    _text(root, "值班记录", Vector3(-0.51, 1.55, -1.45), 19,
-        Color(0.32, 0.35, 0.31))
+    _text(root, "值 班 记 录", Landmarks.RADIO_LOG + Vector3(0, -0.01, 0), 19,
+        Color(0.32, 0.35, 0.31), true, -PI * 0.5)
     # Realistic scale radio mixer with several strips, rails, knobs and faders.
     _box(root, Vector3(0.0, 1.61, -2.55), Vector3(1.85, 0.32, 0.70),
         Color(0.23, 0.26, 0.25), "bakelite")
@@ -221,7 +221,7 @@ static func _equipment(root: Node3D) -> void:
             Color(0.77, 0.59, 0.37) if i == 2 else Color(0.70, 0.72, 0.67), "bakelite")
     # Full-height side rack: cassette binders, analogue meters, original paper labels.
     _box(root, Vector3(4.52, 1.23, -3.25), Vector3(1.28, 2.46, 1.07),
-        Color(0.33, 0.34, 0.31), "steel")
+        Color(0.33, 0.34, 0.31), "steel", true)
     for i in range(4):
         var y: float = 0.45 + float(i) * 0.49
         _box(root, Vector3(4.52, y, -2.69), Vector3(1.10, 0.05, 0.08),
@@ -236,7 +236,7 @@ static func _equipment(root: Node3D) -> void:
 static func _filing_corner(root: Node3D) -> void:
     # Desk fan, phone handset and file stacks create life beyond the hero console.
     _box(root, Vector3(-4.48, 0.92, -3.16), Vector3(1.45, 1.84, 0.90),
-        Color(0.43, 0.46, 0.42), "steel")
+        Color(0.43, 0.46, 0.42), "steel", true)
     for i in range(3):
         var y: float = 0.40 + float(i) * 0.56
         _box(root, Vector3(-4.46, y, -2.67), Vector3(1.24, 0.46, 0.03),
@@ -245,7 +245,7 @@ static func _filing_corner(root: Node3D) -> void:
             Color(0.78, 0.70, 0.54), "steel")
     # Standing lamp, newspaper and cigarette tin near the window, not in walking path.
     _box(root, Vector3(-4.55, 0.78, 1.65), Vector3(1.60, 1.52, 0.84),
-        Color(0.36, 0.27, 0.20), "wood")
+        Color(0.36, 0.27, 0.20), "wood", true)
     _box(root, Vector3(-4.55, 1.60, 1.65), Vector3(1.80, 0.075, 0.92),
         Color(0.53, 0.37, 0.23), "wood")
     for i in range(4):
@@ -256,9 +256,9 @@ static func _filing_corner(root: Node3D) -> void:
         Color(0.38, 0.43, 0.40), "steel")
     # Operator chair behind console; player cannot walk into it.
     _box(root, Vector3(2.60, 0.80, -4.02), Vector3(0.67, 0.17, 0.69),
-        Color(0.26, 0.30, 0.29), "fabric")
+        Color(0.26, 0.30, 0.29), "fabric", true)
     _box(root, Vector3(2.60, 1.27, -4.38), Vector3(0.70, 1.1, 0.14),
-        Color(0.25, 0.29, 0.28), "fabric")
+        Color(0.25, 0.29, 0.28), "fabric", true)
     _cylinder(root, Vector3(2.60, 0.37, -4.02), 0.08, 0.73,
         Color(0.30, 0.34, 0.32), "steel")
 
@@ -341,10 +341,11 @@ static func _sphere(root: Node3D, at: Vector3, radius: float,
     root.add_child(node)
 
 static func _text(root: Node3D, content: String, at: Vector3,
-    font_size: int, color: Color, mounted: bool = false) -> void:
+    font_size: int, color: Color, mounted: bool = true, pitch: float = 0.0) -> void:
     var text_node := Label3D.new()
     text_node.text = content
     text_node.position = at
+    text_node.rotation.x = pitch
     text_node.font_size = font_size
     text_node.pixel_size = 0.004
     text_node.modulate = color

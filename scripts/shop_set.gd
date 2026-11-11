@@ -79,7 +79,8 @@ static func _counter(root: Node3D) -> void:
     for row in range(6):
         _box(ledger, Vector3(0.03, 0.027, -0.13 + row * 0.048),
             Vector3(0.46, 0.005, 0.006), Color(0.39, 0.43, 0.37), "paper")
-    _text(root, "赊 账 簿 / 七 月", Vector3(-1.8, 1.43, -1.58), 18, PAPER)
+    _text(root, "七 月\n赊账簿", Landmarks.SHOP_LEDGER + Vector3(0, 0.002, 0), 16,
+        Color(0.29, 0.27, 0.22), 0.0, -PI * 0.5)
     # Mechanical scale, enamel cup, cash drawer and a modest tabletop radio.
     _box(root, Vector3(-2.95, 1.28, -2.42), Vector3(0.52, 0.27, 0.46), GREEN, "steel")
     Geometry._cylinder(root, Vector3(-2.95, 1.45, -2.42), 0.30, 0.055, PAPER, "steel")
@@ -98,6 +99,16 @@ static func _stock(root: Node3D) -> void:
             _box(root, Vector3(cx + side, 1.27, -5.10), Vector3(0.065, 2.54, 0.72),
                 GREEN, "steel")
         _box(root, Vector3(cx, 1.25, -5.46), Vector3(1.95, 2.45, 0.065), WOOD, "wood")
+        var shelf := StaticBody3D.new()
+        shelf.collision_layer = 1
+        shelf.collision_mask = 0
+        var collision := CollisionShape3D.new()
+        var volume := BoxShape3D.new()
+        volume.size = Vector3(1.95, 2.45, 0.77)
+        collision.shape = volume
+        shelf.position = Vector3(cx, 1.25, -5.10)
+        shelf.add_child(collision)
+        root.add_child(shelf)
         for row in range(3):
             var y: float = 0.36 + row * 0.72
             _box(root, Vector3(cx, y, -5.10), Vector3(1.95, 0.065, 0.77), PAPER, "wood")
@@ -167,11 +178,12 @@ static func _box(root: Node3D, at: Vector3, size: Vector3, tint: Color,
     Geometry._box(root, at, size, tint, surface, solid)
 
 static func _text(root: Node3D, text: String, at: Vector3, size: int, tint: Color,
-    yaw: float = 0.0) -> void:
+    yaw: float = 0.0, pitch: float = 0.0) -> void:
     var label := Label3D.new()
     label.text = text
     label.position = at
     label.rotation.y = yaw
+    label.rotation.x = pitch
     label.font_size = size
     label.pixel_size = 0.005
     label.modulate = tint

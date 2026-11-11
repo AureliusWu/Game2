@@ -97,7 +97,7 @@ func _snap(game: Node3D, player: CharacterBody3D, camera: Camera3D,
 
 func _save(filename: String) -> bool:
     # Several visible frames allow the renderer and physics scene to settle.
-    for i in range(10):
+    for i in range(24):
         await process_frame
     await RenderingServer.frame_post_draw
     var img: Image = get_root().get_texture().get_image()

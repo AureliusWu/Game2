@@ -3,6 +3,7 @@ extends RefCounted
 ## Lin Xiaohe, missing 21:10 on 2003-07-17; tape 21:47; public broadcast 22:16.
 const PEOPLE := {
     "npc_shop": {
+        "short_name": "吴婶 · 小卖部守店人",
         "name": "吴婶 · 小卖部守店人",
         "intro": "柜台边的人穿着褪色的绿外套。\n\n『来买汽水？现在没什么人了。你问 2003 年的事情？那年夏天我可没忘。』\n\n她说话时一直盯着门口，仿佛有客人在外面排队。",
         "topics": [
@@ -21,6 +22,7 @@ const PEOPLE := {
         ]
     },
     "npc_radio": {
+        "short_name": "陈站长 · 广播站值班员",
         "name": "陈站长 · 旧广播站值班员",
         "intro": "旧制服的男人站在控制台旁，目光不时扫过磁带机。\n\n『站里早停了。你要听那段录音？别把音量调得太大。』\n\n他不肯正视墙上的停播通知。",
         "topics": [

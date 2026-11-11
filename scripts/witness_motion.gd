@@ -16,4 +16,9 @@ func _process(delta: float) -> void:
     var hands: Node3D = get_node_or_null("HandsPivot") as Node3D
     if hands != null:
         hands.position.y = sin(elapsed * (2.6 if speaking else 1.2)) * (0.028 if speaking else 0.008)
-    rotation.y = initial_rotation + sin(elapsed * 0.4) * 0.012
+    var yaw: float = initial_rotation + sin(elapsed * 0.4) * 0.012
+    var camera: Camera3D = get_viewport().get_camera_3d()
+    if speaking and camera != null:
+        var toward: Vector3 = camera.global_position - global_position
+        yaw = atan2(toward.x, toward.z)
+    rotation.y = lerp_angle(rotation.y, yaw, minf(1.0, delta * 5.0))
