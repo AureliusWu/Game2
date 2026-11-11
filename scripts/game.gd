@@ -7,6 +7,7 @@ const Interaction = preload("res://scripts/interaction.gd")
 const Screenshots = preload("res://scripts/screenshots.gd")
 const TapeSequence = preload("res://scripts/tape_sequence.gd")
 const Landmarks = preload("res://scripts/landmarks.gd")
+const CaseBoard = preload("res://scripts/case_board.gd")
 const EVIDENCE := {
     "poster": {
         "name": "寻人启事",
@@ -55,6 +56,10 @@ const EVIDENCE := {
     "phone_whisper": {
         "name": "无人的公用电话",
         "text": "广播站的录音之后，公用电话竟然自己响了三声。听筒里没有语言，只有与林小禾录音同样的断续节拍。电话线已被剪断，柜体上仍贴着『九月起撤机』的旧告示。"
+    },
+    "ledger_crosscheck": {
+        "name": "账本与证词的互证",
+        "text": "7 月 20 日账本确实记下了“林小禾”，但吴婶没有目击本人；写下名字的人只听见卷帘门外有人自报姓名。记录证明有人报出了名字，不能证明失踪者已回来。声音、名字与本人，必须分别核对。"
     }
 }
 const REQUIRED := ["poster", "ledger", "log", "tape"]
@@ -87,6 +92,8 @@ var tape_active: bool = false
 var tape_step: int = -1
 var modal: PanelContainer
 var modal_stack: VBoxContainer
+var navigation_label: Label
+var guidance_enabled: bool = false
 
 func _ready() -> void:
     _load_save()
@@ -143,7 +150,7 @@ func _create_ui() -> void:
     hud.add_child(title_label)
     help_label = Label.new()
     help_label.position = Vector2(24, 58)
-    help_label.text = "WASD 移动 · 鼠标观察 · Shift 快走 · E/F 调查 · J 笔记 · F12 截图 · Esc"
+    help_label.text = "WASD 移动 · E/F 调查 · J 笔记 · H 方位提示 · F12 截图 · Esc 菜单"
     help_label.add_theme_font_size_override("font_size", 16)
     help_label.add_theme_color_override("font_color", Color(0.82, 0.82, 0.77))
     hud.add_child(help_label)
@@ -170,6 +177,13 @@ func _create_ui() -> void:
     objective_label.add_theme_font_size_override("font_size", 17)
     objective_label.add_theme_color_override("font_color", Color(0.96, 0.82, 0.60))
     hud.add_child(objective_label)
+    navigation_label = Label.new()
+    navigation_label.position = Vector2(24, 100)
+    navigation_label.add_theme_font_size_override("font_size", 17)
+    navigation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    navigation_label.add_theme_color_override("font_color", Color(0.81, 0.85, 0.75))
+    navigation_label.visible = false
+    hud.add_child(navigation_label)
     crosshair = Label.new()
     crosshair.text = "·"
     crosshair.set_anchors_preset(Control.PRESET_CENTER)
@@ -211,7 +225,7 @@ func _layout_modal() -> void:
         return
     var view: Vector2 = get_viewport().get_visible_rect().size
     var half_width: float = minf(350.0, maxf(160.0, (view.x - 36.0) * 0.5))
-    var half_height: float = minf(240.0, maxf(130.0, (view.y - 36.0) * 0.5))
+    var half_height: float = minf(280.0, maxf(130.0, (view.y - 36.0) * 0.5))
     modal.anchor_left = 0.5
     modal.anchor_right = 0.5
     modal.offset_left = -half_width
@@ -233,6 +247,9 @@ func _layout_modal() -> void:
     objective_label.offset_bottom = objective_label.offset_top + 64.0
     photo_notice.offset_right = view.x - 24.0
     photo_notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    navigation_label.position.y = 158.0 if view.x < 1100.0 else 100.0
+    navigation_label.size.x = view.x - 48.0
+    title_label.visible = not modal.visible or view.x >= 1100.0
 
 func _begin_modal(heading: String, witness_panel: bool = false) -> VBoxContainer:
     witness_panel_mode = witness_panel
@@ -252,6 +269,7 @@ func _begin_modal(heading: String, witness_panel: bool = false) -> VBoxContainer
     stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     var scroller := ScrollContainer.new()
     scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    scroller.follow_focus = true
     scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
     margin.add_child(scroller)
     scroller.add_child(stack)
@@ -262,8 +280,10 @@ func _begin_modal(heading: String, witness_panel: bool = false) -> VBoxContainer
     title.add_theme_color_override("font_color", Color(0.98, 0.83, 0.58))
     stack.add_child(title)
     modal.visible = true
+    title_label.visible = get_viewport().get_visible_rect().size.x >= 1100.0
     help_label.visible = false
     objective_label.visible = false
+    navigation_label.visible = false
     prompt_label.text = ""
     crosshair.visible = false
     player.can_move = false
@@ -314,11 +334,49 @@ func _close_modal() -> void:
         _set_mood(collected.has("tape"))
     _set_witness_speaking("")
     modal.visible = false
+    title_label.visible = true
     help_label.visible = true
     objective_label.visible = true
     crosshair.visible = true
     player.can_move = true
     Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+func _menu() -> void:
+    var stack := _begin_modal("调查菜单")
+    _add_button(stack, "继续调查", Callable(self, "_close_modal"))
+    _add_button(stack, "调查笔记", Callable(self, "_journal"))
+    _add_button(stack, "操作与方位提示", Callable(self, "_controls"))
+    _add_button(stack, "重新开始调查", Callable(self, "_confirm_restart"))
+    _add_button(stack, "退出游戏", func(): get_tree().quit())
+
+func _controls() -> void:
+    var stack := _begin_modal("操作与方位提示")
+    _add_text(stack, "WASD 移动 · 鼠标观察 · Shift 快走\nE / F 调查准星前的物件 · J 调查笔记\nH 开关方位提示 · F12 截图 · Esc 关闭面板 / 调查菜单\n\n对话和笔记可以用鼠标滚轮翻页，也可以用 Tab / 方向键选择，Enter 确认。\n\n方位提示按当前调查进度显示方向与距离，可随时关闭。", 240)
+    _add_button(stack, "关闭方位提示" if guidance_enabled else "开启方位提示", Callable(self, "_toggle_guidance"))
+    _add_button(stack, "返回菜单", Callable(self, "_menu"))
+
+func _toggle_guidance() -> void:
+    guidance_enabled = not guidance_enabled
+    _controls()
+
+func _confirm_restart() -> void:
+    var stack := _begin_modal("重新开始调查？")
+    _add_text(stack, "本次线索与时间线会从镇口重新开始。上一份调查记录将保留为备份。", 130)
+    _add_button(stack, "保留当前调查 · 返回菜单", Callable(self, "_menu"))
+    _add_button(stack, "确认重新开始", Callable(self, "_restart_case"))
+
+func _restart_case() -> void:
+    if persistence_enabled and FileAccess.file_exists(save_path):
+        var result: Error = DirAccess.copy_absolute(ProjectSettings.globalize_path(save_path), ProjectSettings.globalize_path(save_path + ".previous"))
+        if result != OK:
+            _message("暂时无法重新开始", "上一份记录未能备份，当前调查进度已保留。请稍后再试。")
+            return
+    collected.clear()
+    finished = false
+    _close_modal()
+    _go_to("street", true)
+    _save()
+    _message("重新抵达 · 怀声镇", "你又站在镇口。左侧木告示栏上，寻人启事的印章仍然异常鲜红。\n\nWASD 移动，E 调查。需要方向时可以按 H，按 J 整理笔记。")
 
 func _go_to(zone: String, initial: bool = false) -> void:
     if ambience != null:
@@ -388,18 +446,24 @@ func _update_objective() -> void:
     if objective_label == null:
         return
     if finished:
-        objective_label.text = "第一案已结 · 按 J 回看笔记"
+        objective_label.text = "时间线已确认 · 按 J 回看笔记"
         return
     if _ready_to_deduce():
         objective_label.text = "线索已齐 · 按 J 整理时间线并推理"
         return
     var count: int = _required_found()
-    if not collected.has("poster"):
-        objective_label.text = "当前目标 · 寻找镇口的寻人启事"
+    if current_zone == "shop" and not collected.has("ledger"):
+        objective_label.text = "当前目标 · 柜台近侧，翻阅摊开的赊账簿"
+    elif current_zone == "radio" and not collected.has("log"):
+        objective_label.text = "当前目标 · 控制台左侧，阅读值班记录"
+    elif current_zone == "radio" and not collected.has("tape"):
+        objective_label.text = "当前目标 · 控制台右侧，监听旧录音"
+    elif not collected.has("poster"):
+        objective_label.text = "当前目标 · 镇口左侧，查看木告示栏"
     elif not collected.has("ledger"):
-        objective_label.text = "当前目标 · 查看小卖部账本"
+        objective_label.text = "当前目标 · 街道左侧，前往吉祥小卖部"
     elif not collected.has("log") or not collected.has("tape"):
-        objective_label.text = "当前目标 · 调查旧广播站"
+        objective_label.text = "当前目标 · 街道右侧，前往旧广播站"
     else:
         objective_label.text = "关键线索 " + str(count) + " / 4"
 
@@ -407,9 +471,28 @@ func _update_location_label() -> void:
     var names := {"street": "怀声镇 · 镇中心", "shop": "吉祥小卖部", "radio": "旧广播站", "shrine": "怀声祠"}
     title_label.text = "旧梦乡 / " + names.get(current_zone, current_zone)
     if finished:
-        title_label.text += "  ·  第一案已结"
+        title_label.text += "  ·  时间线已确认"
+
+func _update_navigation() -> void:
+    navigation_label.visible = guidance_enabled and not modal.visible
+    if not navigation_label.visible:
+        return
+    var next: Dictionary = CaseBoard.guidance(current_zone, collected)
+    if next.is_empty():
+        navigation_label.text = "方位提示 · 按 J 整理时间线与证词 · H 关闭"
+        return
+    var delta: Vector3 = next["at"] - player.global_position
+    var bearing: float = angle_difference(player.rotation.y, atan2(-delta.x, -delta.z))
+    var direction: String = "前方"
+    if absf(bearing) > PI * 0.72:
+        direction = "身后"
+    elif absf(bearing) > 0.40:
+        direction = "左侧" if bearing > 0 else "右侧"
+    var metres: int = int(ceil(Vector2(delta.x, delta.z).length()))
+    navigation_label.text = str(next["name"]) + " · " + direction + "约 " + str(metres) + " 米 · H 关闭"
 
 func _process(_delta: float) -> void:
+    _update_navigation()
     if photo_notice != null and photo_notice.visible and Time.get_ticks_msec() >= photo_notice_end:
         photo_notice.visible = false
     if modal.visible:
@@ -435,13 +518,14 @@ func _input(event: InputEvent) -> void:
         elif event.keycode == KEY_ESCAPE:
             if modal.visible:
                 _close_modal()
-            elif Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-                Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
             else:
-                Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+                _menu()
             get_viewport().set_input_as_handled()
         elif not modal.visible and event.keycode == KEY_J:
             _journal()
+            get_viewport().set_input_as_handled()
+        elif not modal.visible and event.keycode == KEY_H:
+            guidance_enabled = not guidance_enabled
             get_viewport().set_input_as_handled()
         elif not modal.visible and event.keycode in [KEY_E, KEY_F] and focus_id != "":
             _interact(focus_id)
@@ -500,8 +584,9 @@ func _show_tape_beat() -> void:
     if beat.is_empty():
         return
     var stack := _begin_modal("监听录音 · " + str(beat["clock"]))
+    stack.add_theme_constant_override("separation", 10)
     _add_text(stack, str(beat["marker"]) + "\n\n" + str(beat["scene"]) + \
-        "\n\n" + str(beat["caption"]), 245.0)
+        "\n\n" + str(beat["caption"]), 165.0)
     var wave := HBoxContainer.new()
     wave.add_theme_constant_override("separation", 3)
     stack.add_child(wave)
@@ -512,7 +597,7 @@ func _show_tape_beat() -> void:
         bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         wave.add_child(bar)
     var stage_label: String = "监听进度  " + str(tape_step + 1) + " / " + str(TapeSequence.count())
-    _add_text(stack, stage_label, 32.0)
+    _add_text(stack, stage_label, 24.0)
     _add_button(stack, "记录线索并结束" if tape_step == TapeSequence.count() - 1 \
         else "继续监听", Callable(self, "_tape_next"))
     _add_button(stack, "停止播放 · 暂不记录", Callable(self, "_close_modal"))
@@ -631,9 +716,23 @@ func _ready_to_deduce() -> bool:
     return true
 
 func _journal() -> void:
-    var stack := _begin_modal("调查笔记 · 广播里的人")
-    # _begin_modal already owns a responsive scroll area. Nested scrolling kept
-    # the footer partly clipped in compact windows and trapped the mouse wheel.
+    var stack := _begin_modal("调查笔记 · 时间线")
+    _add_text(stack, "关键证据 " + str(_required_found()) + " / 4  ·  已记录 " + str(collected.size()) + " 条线索", 30)
+    if _ready_to_deduce():
+        _add_button(stack, "整理时间线 · 开始推理", Callable(self, "_deduction"))
+    else:
+        _add_text(stack, "还需调查：" + CaseBoard.missing(collected), 58)
+    _add_button(stack, "查看证据摘录", Callable(self, "_journal_evidence"))
+    if CaseBoard.can_crosscheck(collected):
+        _add_button(stack, "回看账本互证" if collected.has("ledger_crosscheck") else "核对账本与证词", Callable(self, "_crosscheck"))
+    elif collected.has("ledger"):
+        _add_text(stack, "可选调查 · 账本的署名仍有疑点，向吴婶询问 7 月 20 日。", 58)
+    _add_text(stack, CaseBoard.timeline(collected), 180)
+    _add_button(stack, "返回调查", Callable(self, "_close_modal"))
+
+func _journal_evidence() -> void:
+    var stack := _begin_modal("调查笔记 · 证据摘录")
+    _add_button(stack, "返回时间线", Callable(self, "_journal"))
     var evidence_list := VBoxContainer.new()
     evidence_list.add_theme_constant_override("separation", 10)
     evidence_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -647,10 +746,33 @@ func _journal() -> void:
         _add_text(evidence_list, "【" + item["name"] + "】\n" + item["text"], 82)
     if discovered_count == 0:
         _add_text(evidence_list, "还没有收集任何线索。先调查街道上的寻人启事。", 100)
-    if _ready_to_deduce():
-        _add_button(stack, "整理时间线 · 开始推理", Callable(self, "_deduction"))
-    else:
-        _add_text(stack, "关键证据：" + str(_required_found()) + " / 4  ·  继续调查小卖部和广播站", 30)
+    _add_button(stack, "返回调查", Callable(self, "_close_modal"))
+
+func _crosscheck(feedback: String = "") -> void:
+    if not CaseBoard.can_crosscheck(collected):
+        return
+    var stack := _begin_modal("证词核对 · 姓名与本人")
+    if feedback != "":
+        _add_text(stack, feedback, 62)
+    _add_text(stack, "账本上写着：7 月 20 日，林小禾赊购汽水。\n吴婶说：没有看见本人，是丈夫隔着卷帘门听人报了名字。\n\n这两条记录能够共同证明什么？", 150)
+    _add_button(stack, "A. 林小禾本人在失踪三天后回来了", func(): _crosscheck_answer("A"))
+    _add_button(stack, "B. 有人报出了她的名字，身份仍未确认", func(): _crosscheck_answer("B"))
+    _add_button(stack, "C. 账本的日期一定写错了", func(): _crosscheck_answer("C"))
+    _add_button(stack, "返回时间线", Callable(self, "_journal"))
+
+func _crosscheck_answer(selection: String) -> void:
+    if not CaseBoard.can_crosscheck(collected):
+        return
+    if selection != "B":
+        _crosscheck("核对尚未成立 · 报出名字不等于本人在场；现有记录也不足以断言日期写错。")
+        return
+    var fresh: bool = not collected.has("ledger_crosscheck")
+    collected["ledger_crosscheck"] = true
+    if fresh:
+        _save()
+    var stack := _begin_modal("互证完成 · 名字不能证明身份")
+    _add_text(stack, str(EVIDENCE["ledger_crosscheck"]["text"]), 200)
+    _add_button(stack, "返回时间线", Callable(self, "_journal"))
     _add_button(stack, "返回调查", Callable(self, "_close_modal"))
 
 func _required_found() -> int:
@@ -660,12 +782,15 @@ func _required_found() -> int:
             n += 1
     return n
 
-func _deduction() -> void:
+func _deduction(feedback: String = "") -> void:
     if not _ready_to_deduce():
         return
     var stack := _begin_modal("推理 · 时间不可能倒流")
+    stack.add_theme_constant_override("separation", 10)
+    if feedback != "":
+        _add_text(stack, feedback, 58)
     _add_text(stack,
-        "已确认：\n· 林小禾于 7 月 17 日 21:10 被报失踪。\n· 磁带在 21:47 录到了她的声音。\n· 寻人广播直到 22:16 才播出。\n\n问题：广播究竟扮演了什么角色？", 200)
+        "7 月 17 日的记录：\n21:10 报失踪 → 21:47 内线录音 → 22:16 全镇播报\n\n广播究竟扮演了什么角色？", 120)
     _add_button(stack, "A. 广播首次制造了模仿林小禾的声音", func(): _answer("A"))
     _add_button(stack, "B. 声音早已出现，广播只是将它传到了镇上", func(): _answer("B"))
     _add_button(stack, "C. 一切都是小卖部店主的恶作剧", func(): _answer("C"))
@@ -673,8 +798,7 @@ func _deduction() -> void:
 
 func _answer(selection: String) -> void:
     if selection != "B":
-        _message("推理尚未成立",
-            "请重新比对录音时间与广播时间。要分清『第一次记录到声音』和『把声音传播给其他人』。")
+        _deduction("推理尚未成立 · 21:47 的录音早于 22:16 的公开播报。请分清记录声音和传播声音，再试一次。")
         return
     finished = true
     ambience.play_last_call()
@@ -684,8 +808,17 @@ func _answer(selection: String) -> void:
     var witness_note: String = ""
     if collected.has("shop_testimony") and collected.has("radio_testimony"):
         witness_note = "\n\n你还确认了两条容易被误读的证词：账本只能证明有人叫了小禾的名字，内线录音不等于全镇广播。"
-    _message("第一案 · 尾声",
-        "你终于确定：广播并不是模仿者诞生的起点。\n\n21:47，有人已经在模仿林小禾。\n22:16，那段声音经广播传遍了怀声镇。\n\n广播站的电源突然熄灭。\n你从身后的喇叭听见自己的声音：\n\n『调查结束了。可以回家了。』\n\n—— 第一案原型完成。真正的失踪之谜仍未揭开。" + witness_note)
+    if collected.has("ledger_crosscheck"):
+        witness_note += "\n\n你在账本署名旁画了一道铅笔线。门外的人会说她的名字，却始终没有人看见她的脸。"
+    _message("尾声 · 广播之后",
+        "你终于确定：广播并不是那段声音的起点。\n\n21:47，与小禾一样的声音已经出现在内线录音中。\n22:16，那段声音经广播传遍了怀声镇。\n\n" + _epilogue_setting() + "\n\n『调查结束了。可以回家了。』\n\n你没有回答。小禾去了哪里，门外又是谁，仍然没有答案。" + witness_note)
+
+func _epilogue_setting() -> String:
+    match current_zone:
+        "radio": return "控制台的指示灯暗了一瞬。身后停播多年的喇叭里，传来与你一模一样的声音："
+        "shop": return "柜台上的旧收音机忽然响了。没有人碰过旋钮，里面却传来与你一模一样的声音："
+        "shrine": return "祠堂门外的喇叭忽然响了。隔着那道木门，你听见与你一模一样的声音："
+        _: return "镇上的喇叭忽然响了。空荡的街道上，回荡着与你一模一样的声音："
 
 func _save() -> void:
     if not persistence_enabled:

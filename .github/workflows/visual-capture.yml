@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'tests/capture_visuals.gd'
+      - 'tests/player_journey.gd'
       - '.github/workflows/visual-capture.yml'
       - 'scripts/**'
       - 'scenes/**'
@@ -12,6 +13,7 @@ on:
     branches: [main]
     paths:
       - 'tests/capture_visuals.gd'
+      - 'tests/player_journey.gd'
       - '.github/workflows/visual-capture.yml'
       - 'scripts/**'
       - 'scenes/**'
@@ -71,5 +73,26 @@ jobs:
         with:
           name: Game2-Actual-Render-Screenshots
           path: build/visual-captures/*.png
+          retention-days: 14
+          if-no-files-found: error
+      - name: Continuous player input playthrough
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          GALLIUM_DRIVER: llvmpipe
+        run: |
+          set -euo pipefail
+          timeout 240s xvfb-run -a -s '-screen 0 1280x720x24' \
+            Godot_v4.7.2-stable_linux.x86_64 --path . --fixed-fps 60 \
+            --rendering-method gl_compatibility --audio-driver Dummy --resolution 1280x720 \
+            --script res://tests/player_journey.gd 2>&1 | tee /tmp/player-journey.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:|PLAYER_JOURNEY_FAILED:' /tmp/player-journey.log; then exit 1; fi
+          grep -q 'PLAYER_JOURNEY_OK: 16' /tmp/player-journey.log
+          test "$(find build/player-journey -maxdepth 1 -name '*.png' | wc -l)" -eq 16
+          test -s build/player-journey/journey.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Game2-Player-Journey
+          path: build/player-journey/
           retention-days: 14
           if-no-files-found: error
