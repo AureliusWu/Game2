@@ -202,7 +202,10 @@ static func _entrance(root: Node3D, side: int, z: float,
     for dz in [-0.86, 0.86]:
         _box(root, Vector3(s * 4.90, 1.21, z + dz),
             Vector3(0.13, 2.48, 0.13), Color(0.57, 0.51, 0.38), "wood")
-    _text(root, words, Vector3(s * 4.74, 2.81, z),
+    # Mount the nameboard on the awning's front lip. A facade label at y=2.81
+    # lost its first line behind the valance from ordinary street approaches.
+    _box(root, Vector3(s * 4.03, 2.84, z), Vector3(0.10, 0.56, 2.80), shade, "wood")
+    _text(root, words, Vector3(s * 3.965, 2.84, z),
         29, Color(0.83, 0.72, 0.52), true, -s * PI * 0.5)
 
 static func _awning(root: Node3D, side: int, z: float, width: float, color: Color) -> void:
