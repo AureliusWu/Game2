@@ -23,7 +23,7 @@ func _run() -> void:
         _fail("Unseen school record leaked into notebook")
         return
     game._close_modal()
-    await _aim("street", Vector3(2.8, 1.01, 15.4), Landmarks.SCHOOL_DOOR, "enter_school")
+    await _aim("street", Vector3(2.8, 1.01, Landmarks.SCHOOL_DOOR.z), Landmarks.SCHOOL_DOOR, "enter_school")
     game._interact("enter_school")
     await process_frame
     if game.current_zone != "school" or game.world.get_node_or_null("SchoolSet/RollBook") == null:

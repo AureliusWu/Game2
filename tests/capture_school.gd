@@ -12,7 +12,7 @@ func _run() -> void:
     game.player.set_physics_process(false)
     DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
     RenderingServer.set_render_loop_enabled(false)
-    await _shot("01_school_entrance", "street", Vector3(1.8, 1.01, 18.5), Vector3(4.85, 1.8, 15.4))
+    await _shot("01_school_entrance", "street", Vector3(1.8, 1.01, 14.0), Vector3(4.85, 1.8, 14.0))
     await _shot("02_classroom", "school", Vector3(0, 1.01, 3.7), Vector3(0, 2.0, -5.7))
     await _shot("03_roll_book", "school", Vector3(-3.5, 1.01, -1.9), Vector3(-3.5, 1.2, -3.5))
     game.collected["tape"] = true
