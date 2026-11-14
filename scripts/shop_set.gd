@@ -79,7 +79,7 @@ static func _counter(root: Node3D) -> void:
     for row in range(6):
         _box(ledger, Vector3(0.03, 0.027, -0.13 + row * 0.048),
             Vector3(0.46, 0.005, 0.006), Color(0.39, 0.43, 0.37), "paper")
-    _text(root, "七 月\n赊账簿", Landmarks.SHOP_LEDGER + Vector3(0, 0.002, 0), 16,
+    _text(root, "七 月\n赊账簿", Landmarks.SHOP_LEDGER + Vector3(0, 0.035, 0), 16,
         Color(0.29, 0.27, 0.22), 0.0, -PI * 0.5)
     # Mechanical scale, enamel cup, cash drawer and a modest tabletop radio.
     _box(root, Vector3(-2.95, 1.28, -2.42), Vector3(0.52, 0.27, 0.46), GREEN, "steel")

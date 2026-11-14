@@ -34,7 +34,12 @@ func _run() -> void:
     game.player.global_position = Vector3(0, 0.94, 3.5)
     game.eye.look_at(Vector3(0, 1.7, 5.6))
     await _save("10_shrine_exit")
-    print("FREE_ROAM_CAPTURE_OK: 10 actual renderer views")
+    game._go_to("shop")
+    game._close_modal()
+    game.player.global_position = Vector3(-1.8, 1.01, 0)
+    game.eye.look_at(Vector3(-1.8, 1.18, -1.60))
+    await _save("11_ledger_caption_depth")
+    print("FREE_ROAM_CAPTURE_OK: 11 actual renderer views")
     game.queue_free()
     await process_frame
     quit(0)

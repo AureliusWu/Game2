@@ -6,7 +6,9 @@ on:
       - 'tests/capture_visuals.gd'
       - 'tests/player_journey.gd'
       - 'tests/capture_free_roam.gd'
+      - 'tests/capture_school.gd'
       - '.github/workflows/visual-capture.yml'
+      - '.github/actions/setup-godot/**'
       - 'scripts/**'
       - 'scenes/**'
       - 'project.godot'
@@ -16,7 +18,9 @@ on:
       - 'tests/capture_visuals.gd'
       - 'tests/player_journey.gd'
       - 'tests/capture_free_roam.gd'
+      - 'tests/capture_school.gd'
       - '.github/workflows/visual-capture.yml'
+      - '.github/actions/setup-godot/**'
       - 'scripts/**'
       - 'scenes/**'
       - 'project.godot'
@@ -24,6 +28,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: game2-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   capture:
@@ -39,15 +47,7 @@ jobs:
           sudo apt-get install -y -qq xvfb libgl1 libgl1-mesa-dri mesa-utils fonts-noto-cjk fontconfig
           fc-cache -f
           command -v xvfb-run
-      - name: Download official Godot 4.7.2
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -fL --retry 3 -o /tmp/godot.zip \
-            https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
-          unzip -q /tmp/godot.zip -d /tmp/godot-visual
-          chmod +x /tmp/godot-visual/Godot_v4.7.2-stable_linux.x86_64
-          echo "/tmp/godot-visual" >> "$GITHUB_PATH"
+      - uses: ./.github/actions/setup-godot
       - name: Import resources
         shell: bash
         run: |
@@ -89,8 +89,8 @@ jobs:
             --rendering-method gl_compatibility --audio-driver Dummy --resolution 1280x720 \
             --script res://tests/capture_free_roam.gd 2>&1 | tee /tmp/free-roam-visual.log
           if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:|FREE_ROAM_CAPTURE_FAILED:' /tmp/free-roam-visual.log; then exit 1; fi
-          grep -q 'FREE_ROAM_CAPTURE_OK: 10' /tmp/free-roam-visual.log
-          test "$(find build/free-roam-captures -maxdepth 1 -name '*.png' | wc -l)" -eq 10
+          grep -q 'FREE_ROAM_CAPTURE_OK: 11' /tmp/free-roam-visual.log
+          test "$(find build/free-roam-captures -maxdepth 1 -name '*.png' | wc -l)" -eq 11
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -141,3 +141,16 @@ jobs:
           path: build/player-journey/
           retention-days: 14
           if-no-files-found: error
+      - name: Preserve failed renderer diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Game2-Renderer-Failure-Logs
+          path: |
+            /tmp/import.log
+            /tmp/visual.log
+            /tmp/free-roam-visual.log
+            /tmp/school-visual.log
+            /tmp/player-journey.log
+          if-no-files-found: warn
+          retention-days: 14

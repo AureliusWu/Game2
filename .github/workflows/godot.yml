@@ -9,22 +9,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: game2-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Download official Godot 4.7.2 editor
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -fL --retry 3 -o godot-editor.zip \
-            https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
-          unzip -q godot-editor.zip -d .godot-bin
-          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
-          echo "$GITHUB_WORKSPACE/.godot-bin" >> "$GITHUB_PATH"
-          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+      - uses: ./.github/actions/setup-godot
       - name: Import and validate scripts (strict errors)
         shell: bash
         run: |
@@ -86,6 +81,15 @@ jobs:
           if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-school.log; then exit 1; fi
           grep -q 'SCHOOL_OK:' /tmp/godot-school.log
 
+      - name: Preserve failed test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Game2-Test-Failure-Logs
+          path: /tmp/godot-*.log
+          if-no-files-found: warn
+          retention-days: 14
+
   windows-build:
     needs: [smoke]
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
@@ -93,18 +97,9 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
-      - name: Download official Godot 4.7.2 editor and export templates
-        shell: bash
-        run: |
-          set -euo pipefail
-          BASE="https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable"
-          curl -fL --retry 3 -o /tmp/godot-editor.zip "$BASE/Godot_v4.7.2-stable_linux.x86_64.zip"
-          unzip -q /tmp/godot-editor.zip -d /tmp/godot-editor
-          chmod +x /tmp/godot-editor/Godot_v4.7.2-stable_linux.x86_64
-          echo "/tmp/godot-editor" >> "$GITHUB_PATH"
-          curl -fL --retry 3 -o /tmp/templates.tpz "$BASE/Godot_v4.7.2-stable_export_templates.tpz"
-          mkdir -p "$HOME/.local/share/godot/export_templates/4.7.2.stable"
-          unzip -j -q -o /tmp/templates.tpz 'templates/*' -d "$HOME/.local/share/godot/export_templates/4.7.2.stable"
+      - uses: ./.github/actions/setup-godot
+        with:
+          windows-templates: 'true'
       - name: Import and export Windows x64
         shell: bash
         run: |
@@ -124,4 +119,12 @@ jobs:
           name: Game2-Windows-x64
           path: build/
           if-no-files-found: error
+          retention-days: 14
+      - name: Preserve failed export diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Game2-Export-Failure-Logs
+          path: /tmp/build-*.log
+          if-no-files-found: warn
           retention-days: 14

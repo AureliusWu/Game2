@@ -141,7 +141,23 @@ func _run() -> void:
             if label.billboard != BaseMaterial3D.BILLBOARD_DISABLED:
                 _fail("Mounted prop text still rotates into its backing in " + zone)
                 return
-    print("FREE_ROAM_OK: " + str(checked) + " approach/resize/FOV cases; lifecycle; collisions; open clue aisle; mounted prop text")
+    game._go_to("shop")
+    var ledger: Node3D = game.world.get_node("ShopSet/OpenLedger")
+    var paper_top: float = ledger.global_position.y
+    for mesh in ledger.get_children():
+        if mesh is MeshInstance3D and mesh.mesh is BoxMesh:
+            paper_top = maxf(paper_top, mesh.global_position.y + mesh.mesh.size.y * 0.5)
+    var caption_found: bool = false
+    for label in game.world.find_children("*", "Label3D", true, false):
+        if label.text.contains("赊账簿"):
+            caption_found = true
+            if label.global_position.y <= paper_top + 0.001:
+                _fail("Ledger caption is buried in the paper or decorative lines")
+                return
+    if not caption_found:
+        _fail("Ledger caption missing")
+        return
+    print("FREE_ROAM_OK: " + str(checked) + " approach/resize/FOV cases; lifecycle; collisions; open clue aisle; mounted prop text; ledger caption depth")
     game.queue_free()
     await process_frame
     quit(0)
