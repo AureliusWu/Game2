@@ -54,6 +54,37 @@ jobs:
             exit 1
           fi
           grep -q 'CASE01_OK:' /tmp/godot-case01.log
+      - name: Walkable investigation and compact UI regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 120s Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/exploration.gd 2>&1 | tee /tmp/godot-exploration.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-exploration.log; then
+            exit 1
+          fi
+          grep -q 'EXPLORATION_OK:' /tmp/godot-exploration.log
+      - name: Player progression and restart regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 120s Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/player_ux.gd 2>&1 | tee /tmp/godot-player-ux.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-player-ux.log; then exit 1; fi
+          grep -q 'PLAYER_UX_OK:' /tmp/godot-player-ux.log
+      - name: Free-roam viewpoints, collisions and dialogue lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 120s Godot_v4.7.2-stable_linux.x86_64 --headless --path . --fixed-fps 60 --script res://tests/free_roam.gd 2>&1 | tee /tmp/godot-free-roam.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-free-roam.log; then exit 1; fi
+          grep -q 'FREE_ROAM_OK:' /tmp/godot-free-roam.log
+
+      - name: Optional classroom and save compatibility regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 120s Godot_v4.7.2-stable_linux.x86_64 --headless --path . --fixed-fps 60 --script res://tests/school.gd 2>&1 | tee /tmp/godot-school.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-school.log; then exit 1; fi
+          grep -q 'SCHOOL_OK:' /tmp/godot-school.log
 
   windows-build:
     needs: [smoke]
