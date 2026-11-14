@@ -98,6 +98,27 @@ jobs:
           path: build/free-roam-captures/*.png
           retention-days: 14
           if-no-files-found: warn
+      - name: Optional classroom real-render captures
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          GALLIUM_DRIVER: llvmpipe
+        run: |
+          set -euo pipefail
+          timeout 120s xvfb-run -a -s '-screen 0 1280x720x24' \
+            Godot_v4.7.2-stable_linux.x86_64 --path . --fixed-fps 60 \
+            --rendering-method gl_compatibility --audio-driver Dummy --resolution 1280x720 \
+            --script res://tests/capture_school.gd 2>&1 | tee /tmp/school-visual.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:|SCHOOL_CAPTURE_FAILED:' /tmp/school-visual.log; then exit 1; fi
+          grep -q 'SCHOOL_CAPTURE_OK: 4' /tmp/school-visual.log
+          test "$(find build/school-captures -maxdepth 1 -name '*.png' | wc -l)" -eq 4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Game2-School-Regression
+          path: build/school-captures/*.png
+          retention-days: 14
+          if-no-files-found: error
       - name: Continuous player input playthrough
         shell: bash
         env:

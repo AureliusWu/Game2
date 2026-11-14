@@ -81,7 +81,7 @@ static func _houses(root: Node3D) -> void:
     _house(root, -1, 4.0, 12.0, 6.2, Color(0.56, 0.52, 0.43),
         Color(0.29, 0.32, 0.29), "shop")
     _house(root, 1, 15.4, 9.6, 6.6, Color(0.50, 0.56, 0.51),
-        Color(0.27, 0.30, 0.30), "home")
+        Color(0.27, 0.30, 0.30), "school")
     _house(root, 1, -8.4, 12.7, 7.2, Color(0.46, 0.52, 0.49),
         Color(0.26, 0.31, 0.30), "radio")
     _house(root, -1, -15.8, 11.4, 5.4, Color(0.53, 0.50, 0.43),
@@ -161,6 +161,8 @@ static func _window(root: Node3D, x: float, y: float, z: float,
                 Vector3(0.032, 0.04, 1.00), Color(0.42, 0.49, 0.46), "steel")
 
 static func _storefronts(root: Node3D) -> void:
+    _entrance(root, 1, Landmarks.SCHOOL_DOOR.z, GREEN, "怀声镇小学\n暑期播音训练")
+    _awning(root, 1, Landmarks.SCHOOL_DOOR.z, 3.6, Color(0.33, 0.42, 0.36))
     # Shopfront: tapered awning, metal shutters, hand-painted signs and stacked crates.
     _entrance(root, -1, 4.0, GREEN, "吉祥小卖部\n副食·冷饮")
     _awning(root, -1, 4.0, 5.0, Color(0.25, 0.41, 0.36))

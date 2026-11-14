@@ -78,6 +78,14 @@ jobs:
           if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-free-roam.log; then exit 1; fi
           grep -q 'FREE_ROAM_OK:' /tmp/godot-free-roam.log
 
+      - name: Optional classroom and save compatibility regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 120s Godot_v4.7.2-stable_linux.x86_64 --headless --path . --fixed-fps 60 --script res://tests/school.gd 2>&1 | tee /tmp/godot-school.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-school.log; then exit 1; fi
+          grep -q 'SCHOOL_OK:' /tmp/godot-school.log
+
   windows-build:
     needs: [smoke]
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'

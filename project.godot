@@ -3,7 +3,7 @@ config_version=5
 
 [application]
 config/name="旧梦乡：广播里的人"
-config/version="0.12.0-dev"
+config/version="0.13.0-dev"
 run/main_scene="res://scenes/main.tscn"
 config/description="A first-person Chinese folklore mystery prototype."
 

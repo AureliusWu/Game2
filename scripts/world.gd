@@ -3,6 +3,7 @@ const Characters = preload("res://scripts/characters.gd")
 const RadioSet = preload("res://scripts/radio_set.gd")
 const ShopSet = preload("res://scripts/shop_set.gd")
 const ShrineSet = preload("res://scripts/shrine_set.gd")
+const SchoolSet = preload("res://scripts/school_set.gd")
 const TownSet = preload("res://scripts/town_set.gd")
 const Landmarks = preload("res://scripts/landmarks.gd")
 const Materials = preload("res://scripts/materials.gd")
@@ -27,6 +28,8 @@ func build_zone(zone: String) -> void:
             _build_radio()
         "shrine":
             _build_shrine()
+        "school":
+            _build_school()
         _:
             push_error("Unknown zone: " + zone)
 
@@ -143,6 +146,7 @@ func _build_street() -> void:
     _spot("enter_shop", "进入小卖部", Landmarks.SHOP_DOOR)
     _spot("enter_radio", "进入广播站", Landmarks.RADIO_DOOR)
     _spot("enter_shrine", "进入祠堂", Landmarks.SHRINE_DOOR)
+    _spot("enter_school", "进入镇小学", Landmarks.SCHOOL_DOOR)
 
 func _build_shop() -> void:
     ShopSet.build(self, haunted)
@@ -168,4 +172,10 @@ func _build_shrine() -> void:
     _spot("exit", "返回街道", Landmarks.SHRINE_EXIT)
     _spot("ritual", "阅读封声残页", Landmarks.SHRINE_RITUAL)
     _spot("tablet", "查看无名牌位", Landmarks.SHRINE_TABLET)
+
+func _build_school() -> void:
+    SchoolSet.build(self, haunted)
+    _spot("exit", "返回街道", Landmarks.SCHOOL_EXIT)
+    _spot("school_register", "查阅校务交接簿", Landmarks.SCHOOL_REGISTER)
+    _spot("school_notebook", "翻开练声簿", Landmarks.SCHOOL_NOTEBOOK)
 
