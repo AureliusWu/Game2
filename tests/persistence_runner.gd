@@ -126,6 +126,11 @@ func _run() -> void:
     get_tree().root.add_child(game)
     await get_tree().process_frame
     _check(game.save_recovered and game.collected.has("log") and game.photo_notice.visible, "Actual scene loads backup and shows recovery notice")
+    var recovery_dialog: bool = false
+    for label in game.modal.find_children("*", "Label", true, false):
+        if label.text == "调查记录已恢复":
+            recovery_dialog = true
+    _check(recovery_dialog, "Recovery explanation is inside the opening modal, not hidden behind it")
     if OS.get_cmdline_user_args().has("--expect-export"):
         await get_tree().process_frame
         await RenderingServer.frame_post_draw

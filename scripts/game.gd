@@ -140,8 +140,11 @@ func _ready() -> void:
     tree_exiting.connect(conversation_stage.finish)
     if save_recovered:
         _show_notice("主记录无法读取，已从有效备份恢复调查进度。")
+        _message("调查记录已恢复", "主记录无法读取，已从有效备份恢复调查进度。\n\n已恢复 " + str(collected.size()) + " 条线索。" + ("案件时间线已确认，可以继续回看笔记。" if finished else "按 J 可以回看已收集的证据，继续调查。"))
+        return
     elif save_error != "":
-        _show_notice(save_error)
+        _message("调查记录暂时无法读取", save_error + "\n\n本次从镇口开始调查。")
+        return
     if finished:
         _message("《旧梦乡》· 广播里的人",
             "你已经揭开了这起案件的第一层矛盾。\n\n档案与线索仍然保留。按 J 可以重新阅读调查笔记。")
