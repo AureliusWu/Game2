@@ -81,6 +81,14 @@ jobs:
           if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-school.log; then exit 1; fi
           grep -q 'SCHOOL_OK:' /tmp/godot-school.log
 
+      - name: Safe persistence and restart filesystem regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 120s Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/persistence.gd 2>&1 | tee /tmp/godot-persistence.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-persistence.log; then exit 1; fi
+          grep -q 'PERSISTENCE_OK:' /tmp/godot-persistence.log
+
       - name: Preserve failed test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
@@ -127,4 +135,35 @@ jobs:
           name: Game2-Export-Failure-Logs
           path: /tmp/build-*.log
           if-no-files-found: warn
+          retention-days: 14
+
+  windows-acceptance:
+    needs: [windows-build]
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Game2-Windows-x64
+          path: build/package
+      - name: Install official Windows editor for filesystem regression
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          curl.exe -fL --retry 3 --connect-timeout 20 --max-time 180 -o "$env:RUNNER_TEMP/godot-windows.zip" https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_win64.exe.zip
+          if ($LASTEXITCODE -ne 0) { throw 'Godot download failed' }
+          Expand-Archive "$env:RUNNER_TEMP/godot-windows.zip" "$env:RUNNER_TEMP/godot-windows"
+          $editor = "$env:RUNNER_TEMP/godot-windows/Godot_v4.7.2-stable_win64.exe"
+          $version = & $editor --headless --version
+          if ($LASTEXITCODE -ne 0 -or $version -notmatch '^4\.7\.2\.stable\.official\.') { throw 'Wrong Godot editor identity' }
+      - name: Test Windows filesystem and actual exported EXE
+        shell: pwsh
+        run: ./tests/windows_persistence.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Game2-Windows-Acceptance
+          path: build/windows-qa/
+          if-no-files-found: error
           retention-days: 14
