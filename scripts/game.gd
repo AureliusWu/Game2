@@ -113,6 +113,14 @@ var guidance_enabled: bool = false
 var conversation_stage = ConversationStage.new()
 
 func _ready() -> void:
+    # Fixed, opt-in QA entry: official export templates ignore --script overrides.
+    # The runner only touches user://qa; ordinary launches keep the normal scene.
+    if OS.get_cmdline_user_args().has("--qa-persistence") and not get_tree().has_meta("persistence_qa_active"):
+        get_tree().set_meta("persistence_qa_active", true)
+        var runner: Node = load("res://tests/persistence_runner.gd").new()
+        get_tree().root.add_child.call_deferred(runner)
+        queue_free()
+        return
     # Layout follows the actual window, rather than a fixed 1280px canvas that
     # kept the wide conversation panel even in a physically narrow window.
     get_window().content_scale_size = Vector2i.ZERO

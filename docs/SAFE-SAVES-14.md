@@ -18,4 +18,6 @@
 
 本地 Godot 4.7.2：原有 smoke、case01、exploration、player_ux、free_roam（100 组）、school 通过。新增 persistence 42 项检查覆盖原始字节备份、两档损坏、结构损坏、旧 ID 过滤、中断提交、不读取暂存、真实文件/目录冲突、提交与回滚故障注入、重开失败、菜单按钮重试、未保存线索和实际场景恢复提示。
 
+首个 Windows 候选的编辑器文件系统 42 项通过，但正式 EXE 忽略 `--script`，启动常规游戏后超时。改为固定、显式的 `--qa-persistence` 入口，在相同导出包中运行同一 Node 检查器；该模式只使用独立 `user://qa` 路径，不改正常调查存档。参见 [官方命令行选项可用性](https://docs.godotengine.org/en/latest/tutorials/editor/command_line_tutorial.html)。
+
 CI 保留全部原有 Linux 逻辑、Windows 导出、真实渲染和连续输入试玩检查；新增 Windows 编辑器与导出 Game2.exe 执行同一 persistence 回归，并记录被测 EXE / PCK SHA256。具体候选及主线结果以 Actions 记录为准，不能把源码检查当作 Windows 真人试玩。

@@ -24,7 +24,7 @@ $exe = Join-Path $root 'build/package/Game2.exe'
 if (-not (Test-Path $exe) -or -not (Test-Path (Join-Path $root 'build/package/Game2.pck'))) { throw 'Missing exported game package' }
 Push-Location (Join-Path $root 'build/package')
 try {
-    Invoke-GodotCheck $exe @('--rendering-method', 'gl_compatibility', '--audio-driver', 'Dummy', '--script', 'res://tests/persistence.gd', '--', '--expect-export') 'exported-exe-persistence' 'PERSISTENCE_OK:'
+    Invoke-GodotCheck $exe @('--rendering-method', 'gl_compatibility', '--audio-driver', 'Dummy', '--', '--qa-persistence', '--expect-export') 'exported-exe-persistence' 'PERSISTENCE_OK:'
 } finally { Pop-Location }
 if (-not (Test-Path (Join-Path $qa 'recovered-investigation.png'))) { throw 'Missing actual Windows EXE render capture' }
 $hashes = Get-FileHash $exe, (Join-Path $root 'build/package/Game2.pck') -Algorithm SHA256
