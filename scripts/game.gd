@@ -1,5 +1,6 @@
 extends Node3D
 ## Case 01: 广播里的人 — investigation, dialogue, deduction. No combat.
+const SaveStore = preload("res://scripts/save_store.gd")
 const WorldBuilder = preload("res://scripts/world.gd")
 const Ambience = preload("res://scripts/ambience.gd")
 const Interviews = preload("res://scripts/interviews.gd")
@@ -87,6 +88,8 @@ var collected: Dictionary = {}
 var finished: bool = false
 var save_path: String = "user://case01-save.json"
 var persistence_enabled: bool = true
+var save_error: String = ""
+var save_recovered: bool = false
 var focus_id: String = ""
 var active_witness: String = ""
 
@@ -110,6 +113,14 @@ var guidance_enabled: bool = false
 var conversation_stage = ConversationStage.new()
 
 func _ready() -> void:
+    # Fixed, opt-in QA entry: official export templates ignore --script overrides.
+    # The runner only touches user://qa; ordinary launches keep the normal scene.
+    if OS.get_cmdline_user_args().has("--qa-persistence") and not get_tree().has_meta("persistence_qa_active"):
+        get_tree().set_meta("persistence_qa_active", true)
+        var runner: Node = load("res://tests/persistence_runner.gd").new()
+        get_tree().root.add_child.call_deferred(runner)
+        queue_free()
+        return
     # Layout follows the actual window, rather than a fixed 1280px canvas that
     # kept the wide conversation panel even in a physically narrow window.
     get_window().content_scale_size = Vector2i.ZERO
@@ -127,6 +138,13 @@ func _ready() -> void:
     _go_to("street", true)
     get_viewport().size_changed.connect(_resize_ui)
     tree_exiting.connect(conversation_stage.finish)
+    if save_recovered:
+        _show_notice("主记录无法读取，已从有效备份恢复调查进度。")
+        _message("调查记录已恢复", "主记录无法读取，已从有效备份恢复调查进度。\n\n已恢复 " + str(collected.size()) + " 条线索。" + ("案件时间线已确认，可以继续回看笔记。" if finished else "按 J 可以回看已收集的证据，继续调查。"))
+        return
+    elif save_error != "":
+        _message("调查记录暂时无法读取", save_error + "\n\n本次从镇口开始调查。")
+        return
     if finished:
         _message("《旧梦乡》· 广播里的人",
             "你已经揭开了这起案件的第一层矛盾。\n\n档案与线索仍然保留。按 J 可以重新阅读调查笔记。")
@@ -397,6 +415,9 @@ func _close_modal() -> void:
 func _menu() -> void:
     var stack := _begin_modal("调查菜单")
     _add_button(stack, "继续调查", Callable(self, "_close_modal"))
+    if save_error != "":
+        _add_text(stack, "调查进度暂未保存 · " + save_error, 64)
+        _add_button(stack, "重试保存当前调查", Callable(self, "_retry_save"))
     _add_button(stack, "调查笔记", Callable(self, "_journal"))
     _add_button(stack, "操作与方位提示", Callable(self, "_controls"))
     _add_button(stack, "重新开始调查", Callable(self, "_confirm_restart"))
@@ -419,16 +440,18 @@ func _confirm_restart() -> void:
     _add_button(stack, "确认重新开始", Callable(self, "_restart_case"))
 
 func _restart_case() -> void:
-    if persistence_enabled and FileAccess.file_exists(save_path):
-        var result: Error = DirAccess.copy_absolute(ProjectSettings.globalize_path(save_path), ProjectSettings.globalize_path(save_path + ".previous"))
-        if result != OK:
-            _message("暂时无法重新开始", "上一份记录未能备份，当前调查进度已保留。请稍后再试。")
-            return
+    # First checkpoint all current clues, including any that previously failed to save.
+    # Commit a clean session before changing any in-memory investigation or scene.
+    if not _save():
+        _message("暂时无法重新开始", "当前调查未能保存，进度仍保留在本次游戏中。\n\n" + save_error)
+        return
+    if not _persist({"found": [], "finished": false}):
+        _message("暂时无法重新开始", "新调查未能保存，当前调查进度已保留。\n\n" + save_error)
+        return
     collected.clear()
     finished = false
     _close_modal()
     _go_to("street", true)
-    _save()
     _message("重新抵达 · 怀声镇", "你又站在镇口。左侧木告示栏上，寻人启事的印章仍然异常鲜红。\n\nWASD 移动，E 调查。需要方向时可以按 H，按 J 整理笔记。")
 
 func _go_to(zone: String, initial: bool = false) -> void:
@@ -918,27 +941,43 @@ func _epilogue_setting() -> String:
         "shrine": return "祠堂门外的喇叭忽然响了。隔着那道木门，你听见与你一模一样的声音："
         _: return "镇上的喇叭忽然响了。空荡的街道上，回荡着与你一模一样的声音："
 
-func _save() -> void:
-    if not persistence_enabled:
+func _show_notice(text: String) -> void:
+    if photo_notice == null:
         return
-    var save_data := {"found": collected.keys(), "finished": finished}
-    DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(save_path.get_base_dir()))
-    var file := FileAccess.open(save_path, FileAccess.WRITE)
-    if file != null:
-        file.store_string(JSON.stringify(save_data))
-        file.close()
+    photo_notice.text = text
+    photo_notice.visible = true
+    photo_notice_end = Time.get_ticks_msec() + 10000
+
+func _persist(data: Dictionary) -> bool:
+    if not persistence_enabled:
+        return true
+    var store = SaveStore.new(EVIDENCE.keys(), REQUIRED)
+    var success: bool = store.write_record(save_path, data)
+    save_error = "" if success else store.last_error
+    return success
+
+func _save() -> bool:
+    var success: bool = _persist({"found": collected.keys(), "finished": finished})
+    if not success:
+        _show_notice("调查进度暂未保存：" + save_error + "。请保持游戏开启，排除存档目录问题后在菜单重试。")
+    return success
+
+func _retry_save() -> void:
+    if _save():
+        _show_notice("调查进度已保存。")
+        _menu()
 
 func _load_save() -> void:
-    if not persistence_enabled or not FileAccess.file_exists(save_path):
+    if not persistence_enabled:
         return
-    var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(save_path))
-    if not (data is Dictionary):
+    var store = SaveStore.new(EVIDENCE.keys(), REQUIRED)
+    var record: Dictionary = store.load_record(save_path)
+    save_recovered = store.recovered
+    if record.is_empty():
+        if FileAccess.file_exists(save_path):
+            save_error = "未找到有效调查记录；原文件仍保留，当前从镇口开始。"
         return
-    var saved: Variant = data.get("found", [])
-    if saved is Array:
-        for id in saved:
-            if id is String and EVIDENCE.has(id):
-                collected[id] = true
-    # A truncated or hand-edited save cannot complete a case without its evidence.
-    var completion: Variant = data.get("finished", false)
-    finished = completion is bool and completion == true and _ready_to_deduce()
+    collected.clear()
+    for id in record["data"]["found"]:
+        collected[id] = true
+    finished = record["data"]["finished"]
