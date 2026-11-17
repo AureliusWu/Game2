@@ -132,18 +132,22 @@ func _run() -> void:
         if not _check(game.active_witness == "" and not game.conversation_stage.active, "Witness lifecycle did not end"):
             return
     # Restore a four-clue legacy save, then persist all new stable IDs.
+    if not _check(DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SAVE.get_base_dir())) == OK, "Create isolated QA directory"):
+        return
     for suffix in ["", ".previous", ".rollback", ".pending", ".previous.rollback"]:
         DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE + suffix))
     game.save_path = SAVE
     game.persistence_enabled = true
     var progress: Dictionary = game.collected.duplicate()
     var legacy := FileAccess.open(SAVE, FileAccess.WRITE)
+    if not _check(legacy != null, "Open legacy test fixture: " + str(FileAccess.get_open_error())):
+        return
     legacy.store_string(JSON.stringify({"found": ["poster", "ledger", "log", "tape"], "finished": true}))
     legacy.close()
     game._load_save()
     if not _check(game.finished and game.collected.size() == 4, "Legacy complete save incompatible"):
         return
-    game.collected = progress
+    game.collected = progress.duplicate()
     if not _check(game._save(), "New conclusions failed safe persistence"):
         return
     game.collected.clear()
@@ -222,6 +226,7 @@ func _click(prefix: String) -> void:
 func _snap(name: String) -> void:
     if not rendered or failed:
         return
+    print("INQUIRY_CAPTURE: " + name)
     RenderingServer.set_render_loop_enabled(true)
     for i in range(4):
         await process_frame
