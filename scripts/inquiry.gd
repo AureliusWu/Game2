@@ -27,12 +27,12 @@ const THREADS := {
         "text": "练声簿描述停下后仍继续的复述，磁带记录了相似声音。两份材料提供了核查延迟复述的方向，尚不能证明来源、意图或说话者身份。"
     },
     "notice": {
-        "title": "提醒与停播通知", "requires": ["broadcast_notice", "radio_testimony"],
+        "title": "播报与停播通知", "requires": ["broadcast_notice", "radio_testimony"],
         "result": "notice_crosscheck",
         "question": "书面停播通知与值班证词应如何使用？",
         "choices": ["A. 7 月 18 日正式停播，不能倒推当夜已收到正式禁令", "B. 7 月 17 日就有这张正式停播通知", "C. 停播通知证明异常声音来自祠堂"],
-        "correct": 0, "feedback": "注意通知的日期和材料范围。手写提醒与正式停播通知需要分别核实。",
-        "text": "正式停播通知标注 7 月 18 日。陈站长的内线证词对应 17 日夜的监听与公开播报，不能据此把正式禁令提前。手写提醒的来历仍需另行核查。"
+        "correct": 0, "feedback": "注意通知的日期和材料范围。现有材料不能证明此前已存在同样的正式禁令。",
+        "text": "正式停播通知标注 7 月 18 日。陈站长的内线证词对应 17 日夜的监听与公开播报，不能据此把正式禁令提前。是否存在更早的禁令，仍需其他材料核查。"
     },
     "folklore": {
         "title": "禁忌与电话", "requires": ["ritual", "phone_whisper"],

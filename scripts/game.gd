@@ -74,7 +74,7 @@ const EVIDENCE := {
     },
     "broadcast_crosscheck": {"name": "关联：声音出现与全镇传播", "text": Inquiry.THREADS["broadcast"]["text"]},
     "voice_boundary": {"name": "关联：练声与回声", "text": Inquiry.THREADS["origin"]["text"]},
-    "notice_crosscheck": {"name": "关联：提醒与停播通知", "text": Inquiry.THREADS["notice"]["text"]},
+    "notice_crosscheck": {"name": "关联：播报与停播通知", "text": Inquiry.THREADS["notice"]["text"]},
     "ritual_boundary": {"name": "关联：禁忌与电话", "text": Inquiry.THREADS["folklore"]["text"]},
     "shop_door_account": {"name": Inquiry.FOLLOWUPS["npc_shop"][0]["label"], "text": Inquiry.FOLLOWUPS["npc_shop"][0]["text"]},
     "calendar_testimony": {"name": Inquiry.FOLLOWUPS["npc_shop"][1]["label"], "text": Inquiry.FOLLOWUPS["npc_shop"][1]["text"]},

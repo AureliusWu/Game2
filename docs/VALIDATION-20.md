@@ -4,7 +4,7 @@
 
 ## 已实施
 
-独立 `scripts/inquiry.gd` 管理五条关联规则、四条追问、线索提示和卷宗。`game.gd` 接入实际笔记/人物菜单；只允许选择已发现的原始材料。先选两份不同材料，再核对推断；错配、错答、取消与换区不写入结论。两份材料的选择草稿不入档，关闭后清空。重复查看不重复计数。
+独立 `scripts/inquiry.gd` 管理五条关联规则、四条追问、线索提示和卷宗。`game.gd` 接入实际笔记/人物菜单；只允许选择已发现的原始材料。先选两份不同材料，再核对推断；错配、错答、取消与换区不写入结论。两份材料的选择草稿不入档，关闭后清空。重复查看不重复计数。停播关联仅谈通知日期，不提前透露尚未向陈站长追问的手写提醒。
 
 新稳定 ID：`broadcast_crosscheck`、`voice_boundary`、`notice_crosscheck`、`ritual_boundary`、`shop_door_account`、`calendar_testimony`、`practice_testimony`、`notice_testimony`。身份关联复用已有 `ledger_crosscheck`。所有记录通过既有 SaveStore 写入，不更换主档路径或结构；未修改旧存档中的完成条件。
 
@@ -18,8 +18,8 @@
 | --- | --- |
 | 导入 | 官方 4.7.2 editor import，无脚本/解析错误 |
 | 原七组回归 | smoke、case01、exploration、player_ux、free_roam、school、persistence 通过；100 组构图、17 处物理交互、43 项存档故障检查仍保留 |
-| inquiry 新回归 | 5799 项断言（包含所有候选材料对与错误答案组合），五条 GUI 关联、四条追问、缺材料、远程证人拒绝、旧完成档/新 ID 往返、取消清理、Tab/Enter、640×360 |
-| inquiry 实渲染 | 5810 项断言，11 张真实 PNG；包含错配、错答、归档、两名证人的追问、卷宗和最小窗口 |
+| inquiry 新回归 | 5800 项断言（包含所有候选材料对与错误答案组合），五条 GUI 关联、四条追问、缺材料、远程证人拒绝、旧完成档/新 ID 往返、取消清理、Tab/Enter、640×360 |
+| inquiry 实渲染 | 5811 项断言，11 张真实 PNG；包含错配、错答、归档、两名证人的追问、卷宗和最小窗口 |
 | 连续输入试玩 | WASD/鼠标/E/J/H/Tab/Enter 原完整路线通过，159.0 米，16 阶段；不瞬移、不注入线索，含错误/正确主线推理与取消/确认重开 |
 | 原画面回归 | 原场景 13 张、自由走位 11 张、学校 4 张，均实际渲染完成 |
 | 重复执行 | 发现学校/主线测试只移除主档、备份会污染下一次启动；改为仅清理各自 QA 路径的全套恢复文件，学校复跑通过 |
@@ -39,7 +39,7 @@ CI 保留原 Linux 逻辑、Windows x64 导出、Windows 编辑器和实际导�
 ## 本地新增画面 SHA256
 
 ```text
-b29c6178c8175b4f811cfd5ce3abb097b302fb4f8e295fe60aa246c1eff97d67  01_empty_board.png
+4ebeedc778556a71a24230d8a95a0102097103ecbd313b274fd68477aa9c90e5  01_empty_board.png
 323725198ea26450f852e926533884d8efb5eeda7d063a28b80b5208e0917c0f  02_empty_materials.png
 840cf2e7eeadccd5f04c668974bf27dfaa57f8336c978bcc1912765f81840ded  03_wrong_pair.png
 c135bda634ea69e99b18edbfa96ef554522f859494e6017a3a9facdd75c4d748  04_wrong_inference.png

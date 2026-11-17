@@ -100,6 +100,8 @@ func _run() -> void:
         await _click(str(thread["choices"][thread["correct"]]))
         if not _check(game.collected.has(thread["result"]), "GUI did not archive " + key):
             return
+    if not _check(not Inquiry.THREADS["notice"]["text"].contains("手写") and not Inquiry.THREADS["notice"]["feedback"].contains("手写"), "Notice association leaked an unasked followup"):
+        return
     game._inquiry_select("origin")
     game._inquiry_toggle("school_notebook")
     game._go_to("shop")
