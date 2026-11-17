@@ -14,7 +14,7 @@ func _initialize() -> void:
         return
     var game: Node = scene.instantiate()
     game.set("save_path", TEST_SAVE)
-    DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
+    _clean_test_save()
     get_root().add_child.call_deferred(game)
     call_deferred("_check", game)
 
@@ -266,5 +266,10 @@ func _check(game: Node) -> void:
         _fail("Malformed progress falsely completed the case")
         return
     print("CASE01_OK: radio slice materials/lighting,  gated tape playback/cancel/replay/audio, witness, clues, deduction, save")
-    DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
+    _clean_test_save()
     quit(0)
+
+func _clean_test_save() -> void:
+    # Only this test's fixture; recovery files are committed data too.
+    for suffix in ["", ".previous", ".rollback", ".pending", ".previous.rollback", ".previous.pending"]:
+        DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE + suffix))

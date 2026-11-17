@@ -15,7 +15,7 @@ func _fail(reason: String) -> void:
 func _run() -> void:
     game = load("res://scenes/main.tscn").instantiate()
     game.save_path = SAVE
-    DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE))
+    _clean_test_save()
     root.add_child(game)
     await process_frame
     game.player.set_physics_process(false)
@@ -91,7 +91,7 @@ func _run() -> void:
     if not game.finished:
         _fail("Original four-clue conclusion stopped working")
         return
-    DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE))
+    _clean_test_save()
     print("SCHOOL_OK: physical entry/props/exit, discovered timeline, optional gates, old/new save IDs, original mainline")
     game.queue_free()
     await process_frame
@@ -108,3 +108,8 @@ func _aim(zone: String, at: Vector3, target: Vector3, expected: String) -> void:
     var selected: Dictionary = Interaction.choose(game.eye, game.world.hotspots, game.get_world_3d().direct_space_state)
     if selected.get("id", "") != expected:
         _fail("Physical interaction blocked/misaligned: " + expected + " got " + str(selected.get("id", "")))
+
+func _clean_test_save() -> void:
+    # Only this test's fixture; recovery files are committed data too.
+    for suffix in ["", ".previous", ".rollback", ".pending", ".previous.rollback", ".previous.pending"]:
+        DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE + suffix))

@@ -10,6 +10,7 @@ const TapeSequence = preload("res://scripts/tape_sequence.gd")
 const Landmarks = preload("res://scripts/landmarks.gd")
 const CaseBoard = preload("res://scripts/case_board.gd")
 const ConversationStage = preload("res://scripts/conversation_stage.gd")
+const Inquiry = preload("res://scripts/inquiry.gd")
 const EVIDENCE := {
     "poster": {
         "name": "寻人启事",
@@ -71,6 +72,14 @@ const EVIDENCE := {
         "name": "证据互证：名字与目击",
         "text": "学校交接簿记录她 7 月 17 日 20:43 离校，7 月 20 日小卖部账本却出现她的名字。吴婶指出记账来自隔门传来的自报姓名，没有任何人确认报名字的是林小禾本人。账本不能证明失踪者返回。"
     },
+    "broadcast_crosscheck": {"name": "关联：声音出现与全镇传播", "text": Inquiry.THREADS["broadcast"]["text"]},
+    "voice_boundary": {"name": "关联：练声与回声", "text": Inquiry.THREADS["origin"]["text"]},
+    "notice_crosscheck": {"name": "关联：提醒与停播通知", "text": Inquiry.THREADS["notice"]["text"]},
+    "ritual_boundary": {"name": "关联：禁忌与电话", "text": Inquiry.THREADS["folklore"]["text"]},
+    "shop_door_account": {"name": Inquiry.FOLLOWUPS["npc_shop"][0]["label"], "text": Inquiry.FOLLOWUPS["npc_shop"][0]["text"]},
+    "calendar_testimony": {"name": Inquiry.FOLLOWUPS["npc_shop"][1]["label"], "text": Inquiry.FOLLOWUPS["npc_shop"][1]["text"]},
+    "practice_testimony": {"name": Inquiry.FOLLOWUPS["npc_radio"][0]["label"], "text": Inquiry.FOLLOWUPS["npc_radio"][0]["text"]},
+    "notice_testimony": {"name": Inquiry.FOLLOWUPS["npc_radio"][1]["label"], "text": Inquiry.FOLLOWUPS["npc_radio"][1]["text"]},
     "ledger_crosscheck": {
         "name": "账本与证词的互证",
         "text": "7 月 20 日账本确实记下了“林小禾”，但吴婶没有目击本人；写下名字的人只听见卷帘门外有人自报姓名。记录证明有人报出了名字，不能证明失踪者已回来。声音、名字与本人，必须分别核对。"
@@ -110,6 +119,8 @@ var modal: PanelContainer
 var modal_stack: VBoxContainer
 var navigation_label: Label
 var guidance_enabled: bool = false
+var inquiry_thread: String = ""
+var inquiry_pair: Array = []
 var conversation_stage = ConversationStage.new()
 
 func _ready() -> void:
@@ -389,7 +400,22 @@ func _add_button(parent: Node, name: String, callback: Callable) -> Button:
             break
     if first_button:
         button.grab_focus()
+        _focus_choice.call_deferred(button)
     return button
+
+func _focus_choice(button: Button) -> void:
+    # Containers compute text wrapping and scroll extents after construction.
+    await get_tree().process_frame
+    await get_tree().process_frame
+    if not is_instance_valid(button) or not button.is_inside_tree():
+        return
+    button.grab_focus()
+    var ancestor: Node = button.get_parent()
+    while ancestor != null:
+        if ancestor is ScrollContainer:
+            ancestor.ensure_control_visible(button)
+            return
+        ancestor = ancestor.get_parent()
 
 func _message(title: String, content: String) -> void:
     var stack := _begin_modal(title)
@@ -397,6 +423,8 @@ func _message(title: String, content: String) -> void:
     _add_button(stack, "继续", Callable(self, "_close_modal"))
 
 func _close_modal() -> void:
+    inquiry_thread = ""
+    inquiry_pair.clear()
     conversation_stage.finish()
     if tape_active:
         tape_active = false
@@ -450,11 +478,15 @@ func _restart_case() -> void:
         return
     collected.clear()
     finished = false
+    inquiry_thread = ""
+    inquiry_pair.clear()
     _close_modal()
     _go_to("street", true)
     _message("重新抵达 · 怀声镇", "你又站在镇口。左侧木告示栏上，寻人启事的印章仍然异常鲜红。\n\nWASD 移动，E 调查。需要方向时可以按 H，按 J 整理笔记。")
 
 func _go_to(zone: String, initial: bool = false) -> void:
+    inquiry_thread = ""
+    inquiry_pair.clear()
     conversation_stage.finish()
     if ambience != null:
         ambience.stop_tape()
@@ -752,6 +784,12 @@ func _interview(person: String) -> void:
         elif person == "npc_radio" and id == "tape" and not collected.has("tape"):
             question = "问：那晚最早的声音从哪里来？"
         _add_button(stack, question, Callable(self, "_interview_topic").bind(person, id))
+    for item in Inquiry.FOLLOWUPS.get(person, []):
+        if Inquiry.has_all(collected, item["requires"]):
+            var label: String = str(item["label"])
+            if collected.has(item["result"]):
+                label += " · 已记录"
+            _add_button(stack, label, Callable(self, "_present_evidence").bind(person, str(item["id"])))
     _add_button(stack, "结束问话", Callable(self, "_close_modal"))
 
 func _interview_topic(person: String, topic_id: String) -> void:
@@ -810,6 +848,9 @@ func _journal() -> void:
         _add_button(stack, "整理时间线 · 开始推理", Callable(self, "_deduction"))
     else:
         _add_text(stack, "还需调查：" + CaseBoard.missing(collected), 58)
+    _add_button(stack, "证据关联板", Callable(self, "_inquiry_board"))
+    _add_button(stack, "调查线索 · 下一步去哪里", Callable(self, "_inquiry_leads"))
+    _add_button(stack, "回看调查卷宗", Callable(self, "_dossier"))
     _add_button(stack, "查看证据摘录", Callable(self, "_journal_evidence"))
     if CaseBoard.can_crosscheck(collected):
         _add_button(stack, "回看账本互证" if collected.has("ledger_crosscheck") else "核对账本与证词", Callable(self, "_crosscheck"))
@@ -915,6 +956,8 @@ func _deduction(feedback: String = "") -> void:
     _add_button(stack, "返回笔记", Callable(self, "_journal"))
 
 func _answer(selection: String) -> void:
+    if not _ready_to_deduce():
+        return
     if selection != "B":
         _deduction("推理尚未成立 · 21:47 的录音早于 22:16 的公开播报。请分清记录声音和传播声音，再试一次。")
         return
@@ -932,6 +975,7 @@ func _answer(selection: String) -> void:
         witness_note += "\n\n你在账本署名旁画了一道铅笔线。门外的人会说她的名字，却始终没有人看见她的脸。"
     _message("尾声 · 广播之后",
         "你终于确定：广播并不是那段声音的起点。\n\n21:47，与小禾一样的声音已经出现在内线录音中。\n22:16，那段声音经广播传遍了怀声镇。\n\n" + _epilogue_setting() + "\n\n『调查结束了。可以回家了。』\n\n你没有回答。小禾去了哪里，门外又是谁，仍然没有答案。" + witness_note)
+    _add_button(modal_stack, "整理调查卷宗", Callable(self, "_dossier"))
 
 func _epilogue_setting() -> String:
     match current_zone:
@@ -981,3 +1025,120 @@ func _load_save() -> void:
     for id in record["data"]["found"]:
         collected[id] = true
     finished = record["data"]["finished"]
+
+func _present_evidence(person: String, id: String) -> void:
+    # No remote interviews: the player must be speaking to this witness here.
+    if active_witness != person or world.get_node_or_null("Witness_" + person) == null:
+        return
+    var item: Dictionary = Inquiry.followup(person, id, collected)
+    if item.is_empty():
+        return
+    var result: String = str(item["result"])
+    if not collected.has(result):
+        collected[result] = true
+        _save()
+    var stack := _begin_modal(str(item["label"]), true)
+    _add_text(stack, str(item["text"]) + "\n\n（补充证词已收入调查笔记）", 180)
+    _add_button(stack, "继续问话", Callable(self, "_interview").bind(person))
+    _add_button(stack, "结束问话", Callable(self, "_close_modal"))
+
+func _inquiry_board() -> void:
+    inquiry_thread = ""
+    inquiry_pair.clear()
+    var stack := _begin_modal("证据关联板")
+    _add_text(stack, "选一个疑点，再选两份已经发现的材料。\n材料相似时，仍需判断它们究竟证明了什么。", 64)
+    for id in Inquiry.THREADS:
+        var thread: Dictionary = Inquiry.THREADS[id]
+        var state: String = "已归档" if collected.has(thread["result"]) else "可核对" if Inquiry.has_all(collected, thread["requires"]) else "待调查"
+        _add_button(stack, str(thread["title"]) + " · " + state, Callable(self, "_inquiry_select").bind(str(id)))
+    _add_button(stack, "返回时间线", Callable(self, "_journal"))
+
+func _inquiry_select(id: String) -> void:
+    if not Inquiry.THREADS.has(id):
+        return
+    inquiry_thread = id
+    inquiry_pair.clear()
+    _inquiry_picker()
+
+func _inquiry_picker(feedback: String = "", focus_material: String = "") -> void:
+    if not Inquiry.THREADS.has(inquiry_thread):
+        return
+    var stack := _begin_modal("关联 · " + str(Inquiry.THREADS[inquiry_thread]["title"]))
+    _add_text(stack, feedback if feedback != "" else "选择两份材料 · 再点一次可取消。不同顺序不影响核对。", 50)
+    for id in inquiry_pair:
+        _add_text(stack, "已选：" + str(EVIDENCE[id]["name"]), 28)
+    var count: int = 0
+    for id in EVIDENCE:
+        if not collected.has(id) or not Inquiry.is_material(id):
+            continue
+        count += 1
+        var button := _add_button(stack, ("✓ " if inquiry_pair.has(id) else "＋ ") + str(EVIDENCE[id]["name"]), Callable(self, "_inquiry_toggle").bind(str(id)))
+        button.tooltip_text = str(EVIDENCE[id]["text"])
+        if id == focus_material:
+            _focus_choice.call_deferred(button)
+    if count == 0:
+        _add_text(stack, "还没有可以关联的材料。先回镇口调查木告示栏。", 70)
+    if inquiry_pair.size() == 2:
+        _add_button(stack, "核对这两份材料", Callable(self, "_inquiry_compare"))
+    _add_button(stack, "返回关联板", Callable(self, "_inquiry_board"))
+
+func _inquiry_toggle(id: String) -> void:
+    if not EVIDENCE.has(id) or not collected.has(id) or not Inquiry.is_material(id):
+        return
+    if inquiry_pair.has(id):
+        inquiry_pair.erase(id)
+    elif inquiry_pair.size() < 2:
+        inquiry_pair.append(id)
+    else:
+        _inquiry_picker("已经选了两份。先取消一份，再换入其他材料。", id)
+        return
+    _inquiry_picker("", id)
+
+func _inquiry_compare(feedback: String = "") -> void:
+    if not Inquiry.valid_pair(inquiry_thread, inquiry_pair, collected):
+        _inquiry_picker("这两份材料还不能回答所选疑点。可返回线索页，寻找对应记录或向证人问话。")
+        return
+    var thread: Dictionary = Inquiry.THREADS[inquiry_thread]
+    var stack := _begin_modal("核对 · " + str(thread["title"]))
+    if feedback != "":
+        _add_text(stack, feedback, 65)
+    for id in inquiry_pair:
+        _add_text(stack, "【" + str(EVIDENCE[id]["name"]) + "】\n" + str(EVIDENCE[id]["text"]), 95)
+    _add_text(stack, str(thread["question"]), 55)
+    for i in range(thread["choices"].size()):
+        _add_button(stack, str(thread["choices"][i]), Callable(self, "_inquiry_answer").bind(i))
+    _add_button(stack, "重新选择材料", Callable(self, "_inquiry_picker"))
+    _add_button(stack, "返回关联板", Callable(self, "_inquiry_board"))
+
+func _inquiry_answer(choice: int) -> void:
+    if not Inquiry.valid_pair(inquiry_thread, inquiry_pair, collected):
+        return
+    var thread: Dictionary = Inquiry.THREADS[inquiry_thread]
+    var result: String = Inquiry.resolve(inquiry_thread, inquiry_pair, choice, collected)
+    if result == "":
+        _inquiry_compare("推断尚未成立 · " + str(thread["feedback"]))
+        return
+    if not collected.has(result):
+        collected[result] = true
+        _save()
+    var stack := _begin_modal("关联归档 · " + str(thread["title"]))
+    _add_text(stack, str(thread["text"]), 170)
+    if inquiry_thread == "broadcast" and _ready_to_deduce() and not finished:
+        _add_button(stack, "整理时间线 · 开始推理", Callable(self, "_deduction"))
+    _add_button(stack, "继续核对其他疑点", Callable(self, "_inquiry_board"))
+    _add_button(stack, "回看调查卷宗", Callable(self, "_dossier"))
+    _add_button(stack, "返回调查", Callable(self, "_close_modal"))
+
+func _inquiry_leads() -> void:
+    var stack := _begin_modal("调查线索 · 下一步去哪里")
+    _add_button(stack, "返回时间线", Callable(self, "_journal"))
+    _add_text(stack, Inquiry.leads(collected), 190)
+    _add_button(stack, "返回调查", Callable(self, "_close_modal"))
+
+func _dossier() -> void:
+    var stack := _begin_modal("调查卷宗 · 广播里的人")
+    _add_button(stack, "返回时间线", Callable(self, "_journal"))
+    _add_text(stack, Inquiry.dossier(collected, finished), 240)
+    _add_button(stack, "继续核对证据", Callable(self, "_inquiry_board"))
+    _add_button(stack, "查看尚可追查的线索", Callable(self, "_inquiry_leads"))
+    _add_button(stack, "返回调查", Callable(self, "_close_modal"))
