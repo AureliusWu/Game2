@@ -7,6 +7,7 @@ on:
       - 'tests/player_journey.gd'
       - 'tests/capture_free_roam.gd'
       - 'tests/capture_school.gd'
+      - 'tests/inquiry.gd'
       - '.github/workflows/visual-capture.yml'
       - '.github/actions/setup-godot/**'
       - 'scripts/**'
@@ -19,6 +20,7 @@ on:
       - 'tests/player_journey.gd'
       - 'tests/capture_free_roam.gd'
       - 'tests/capture_school.gd'
+      - 'tests/inquiry.gd'
       - '.github/workflows/visual-capture.yml'
       - '.github/actions/setup-godot/**'
       - 'scripts/**'
@@ -141,6 +143,27 @@ jobs:
           path: build/player-journey/
           retention-days: 14
           if-no-files-found: error
+      - name: Evidence board and dossier actual-render keyboard regression
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          GALLIUM_DRIVER: llvmpipe
+        run: |
+          set -euo pipefail
+          timeout 240s xvfb-run -a -s '-screen 0 1280x720x24' \
+            Godot_v4.7.2-stable_linux.x86_64 --path . --fixed-fps 60 \
+            --rendering-method gl_compatibility --audio-driver Dummy --resolution 1280x720 \
+            --script res://tests/inquiry.gd 2>&1 | tee /tmp/inquiry-visual.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:|INQUIRY_FAILED:' /tmp/inquiry-visual.log; then exit 1; fi
+          grep -q 'INQUIRY_OK:' /tmp/inquiry-visual.log
+          test "$(find build/inquiry-captures -maxdepth 1 -name '*.png' | wc -l)" -eq 11
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Game2-v20-Inquiry-Regression
+          path: build/inquiry-captures/*.png
+          retention-days: 14
+          if-no-files-found: error
       - name: Preserve failed renderer diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
@@ -152,5 +175,6 @@ jobs:
             /tmp/free-roam-visual.log
             /tmp/school-visual.log
             /tmp/player-journey.log
+            /tmp/inquiry-visual.log
           if-no-files-found: warn
           retention-days: 14

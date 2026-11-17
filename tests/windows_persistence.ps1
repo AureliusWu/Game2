@@ -20,11 +20,15 @@ function Invoke-GodotCheck([string]$Executable, [string[]]$Arguments, [string]$N
 $editor = Join-Path $env:RUNNER_TEMP 'godot-windows/Godot_v4.7.2-stable_win64.exe'
 Invoke-GodotCheck $editor @('--headless', '--editor', '--path', '.', '--import') 'import' ''
 Invoke-GodotCheck $editor @('--headless', '--path', '.', '--script', 'res://tests/persistence.gd') 'editor-persistence' 'PERSISTENCE_OK:'
+# Read the expected version from checked-out source, independently of the PCK.
+$versionMatch = Select-String -Path (Join-Path $root 'project.godot') -Pattern '^config/version="([^"]+)"$' | Select-Object -First 1
+if (-not $versionMatch) { throw 'Source project has no version identity' }
+$expectedVersion = $versionMatch.Matches[0].Groups[1].Value
 $exe = Join-Path $root 'build/package/Game2.exe'
 if (-not (Test-Path $exe) -or -not (Test-Path (Join-Path $root 'build/package/Game2.pck'))) { throw 'Missing exported game package' }
 Push-Location (Join-Path $root 'build/package')
 try {
-    Invoke-GodotCheck $exe @('--rendering-method', 'gl_compatibility', '--audio-driver', 'Dummy', '--', '--qa-persistence', '--expect-export') 'exported-exe-persistence' 'PERSISTENCE_OK:'
+    Invoke-GodotCheck $exe @('--rendering-method', 'gl_compatibility', '--audio-driver', 'Dummy', '--', '--qa-persistence', '--expect-export', "--expect-version=$expectedVersion") 'exported-exe-persistence' 'PERSISTENCE_OK:'
 } finally { Pop-Location }
 if (-not (Test-Path (Join-Path $qa 'recovered-investigation.png'))) { throw 'Missing actual Windows EXE render capture' }
 $hashes = Get-FileHash $exe, (Join-Path $root 'build/package/Game2.pck') -Algorithm SHA256

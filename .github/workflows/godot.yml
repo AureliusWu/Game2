@@ -89,6 +89,14 @@ jobs:
           if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-persistence.log; then exit 1; fi
           grep -q 'PERSISTENCE_OK:' /tmp/godot-persistence.log
 
+      - name: Evidence associations, followups, keyboard and legacy saves
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 180s Godot_v4.7.2-stable_linux.x86_64 --headless --path . --fixed-fps 60 --script res://tests/inquiry.gd 2>&1 | tee /tmp/godot-inquiry.log
+          if grep -Eq 'SCRIPT ERROR:|(^|[[:space:]])ERROR:|Parse Error:' /tmp/godot-inquiry.log; then exit 1; fi
+          grep -q 'INQUIRY_OK:' /tmp/godot-inquiry.log
+
       - name: Preserve failed test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
