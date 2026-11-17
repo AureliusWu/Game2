@@ -30,6 +30,8 @@
 
 ## CI 与交付
 
+首个云端候选 4e1a0f6 的 Windows 导出成功、编辑器存档回归通过，但导出 EXE 检查仍写死 0.14.0-dev，因此版本身份检查失败。保留失败记录（Actions 44008810617）；改为由 PowerShell 从当前检出的 project.godot 读取期望版本并通过命令行传入 EXE，与包内版本独立比较，只有匹配时才打印成功身份。这样后续升级无需改写死字符串，也不会因“自行读取自身版本”而放过旧 PCK。
+
 CI 保留原 Linux 逻辑、Windows x64 导出、Windows 编辑器和实际导出 EXE 的存档回归，新增 inquiry headless 与实渲染检查。具体候选、成功状态及包 SHA256 必须查看该提交的 Actions，不能用本地 Linux 结果替代 Windows 结果。
 
 仍未执行实体 Windows 设备的人类试玩、真实显卡性能测试或正式美术验收；当前版本为 v0.20.0-dev，不是完整失踪案结局或 Steam Demo。下一步是基于实际 Windows 包开展实体设备体验与正式资产替换。

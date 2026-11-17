@@ -47,8 +47,15 @@ func _seed(store: RefCounted) -> void:
 func _run() -> void:
     if OS.get_cmdline_user_args().has("--expect-export"):
         _check(not OS.has_feature("editor"), "Run from exported template, not source editor")
-        _check(ProjectSettings.get_setting("application/config/version") == "0.14.0-dev", "Exported version identity")
-        print("EXPORTED_PACKAGE_OK: 0.14.0-dev")
+        var expected_version: String = ""
+        for argument in OS.get_cmdline_user_args():
+            if argument.begins_with("--expect-version="):
+                expected_version = argument.trim_prefix("--expect-version=")
+        var actual_version: String = str(ProjectSettings.get_setting("application/config/version"))
+        _check(not expected_version.is_empty() and actual_version == expected_version,
+            "Exported version identity: expected " + expected_version + ", got " + actual_version)
+        if not failed:
+            print("EXPORTED_PACKAGE_OK: " + actual_version)
     var store = Store.new(Game.EVIDENCE.keys(), Game.REQUIRED)
     _seed(store)
     var prior: String = FileAccess.get_file_as_string(SAVE)
